@@ -152,6 +152,7 @@
                     <optimize>true</optimize>
                     <showWarnings>true</showWarnings>
                     <showDeprecation>true</showDeprecation>
+                    <compilerArgument>-parameters</compilerArgument>
                 </configuration>
             </plugin>
             <plugin>
