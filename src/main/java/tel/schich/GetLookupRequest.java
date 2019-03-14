@@ -20,16 +20,13 @@ package tel.schich;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.Collections;
+import java.util.List;
 import java.util.regex.Pattern;
-
-import org.asynchttpclient.AsyncHttpClient;
+import java.util.stream.Collectors;
 import org.asynchttpclient.BoundRequestBuilder;
-import org.asynchttpclient.request.body.Body;
-import org.asynchttpclient.request.body.generator.BodyGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static tel.schich.PostfixResponse.writePermanentError;
@@ -53,12 +50,10 @@ public class GetLookupRequest implements PostfixLookupRequest {
     }
 
     public void handleRequest(SocketChannel ch, ByteBuffer buf, String key, ObjectMapper mapper, BoundRequestBuilder restClient) throws IOException {
-        int atIndex = key.indexOf('@');
-
         LOGGER.info("Received key: {}", key);
 
-        String json = mapper.writeValueAsString(new GetRequest("get", key));
-        restClient.setBody(json);
+        restClient.setMethod("GET");
+        restClient.addQueryParam("key", key);
         restClient.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
                 if (err != null) {
@@ -68,10 +63,12 @@ public class GetLookupRequest implements PostfixLookupRequest {
                     int statusCode = response.getStatusCode();
                     if (statusCode == 200) {
                         // REST call successful -> return data
-                        RestResponse data = mapper.readValue(response.getResponseBodyAsStream(), RestResponse.class);
+                        List<String> data = mapper.readValue(response.getResponseBodyAsStream(), new TypeReference<List<String>>() {});
                         if (data != null) {
-                            return writeSuccessfulResponse(ch, buf, data.getResults());
+                            LOGGER.info("Response: {}", String.join("", data));
+                            return writeSuccessfulResponse(ch, buf, data);
                         } else {
+                            LOGGER.warn("No result!");
                             return writeTemporaryError(ch, buf, "REST result was broken!");
                         }
                     } else if (statusCode >= 400 && statusCode < 500) {
@@ -90,13 +87,4 @@ public class GetLookupRequest implements PostfixLookupRequest {
         });
     }
 
-    private static final class GetRequest {
-        public final String type;
-        public final String key;
-
-        public GetRequest(String type, String key) {
-            this.type = type;
-            this.key = key;
-        }
-    }
 }
