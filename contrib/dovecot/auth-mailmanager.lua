@@ -26,10 +26,10 @@ function auth_passdb_lookup(req)
     return auth_userdb_lookup(req)
 end
 
-function auth_passdb_verify(req)
+function auth_passdb_verify(req, password)
     local payload = {
         mailbox = req.user,
-        password = req.password
+        password = password
     }
 
     local code, status, response_body = json_request(passdb_endpoint, auth_token, payload)
