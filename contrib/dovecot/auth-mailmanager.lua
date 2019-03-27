@@ -24,7 +24,7 @@ end
 
 function auth_password_verify(req, password)
     local payload = {
-        mailbox = req.user,
+        mailbox = req.username,
         password = password
     }
 
@@ -41,11 +41,11 @@ function auth_password_verify(req, password)
     end
 
     if code == 404 then
-        return dovecot.auth.PASSDB_RESULT_USER_UNKNOWN, "unknown user"
+        return dovecot.auth.PASSDB_RESULT_USER_UNKNOWN, {}
     end
 
     if code == 401 then
-        return dovecot.auth.PASSDB_RESULT_PASSWORD_MISMATCH, "wrong password"
+        return dovecot.auth.PASSDB_RESULT_PASSWORD_MISMATCH, {}
     end
 
     if code >= 400 and code < 500 then
@@ -63,7 +63,7 @@ end
 
 function auth_userdb_lookup(req)
     local payload = {
-        mailbox = req.user,
+        mailbox = req.username,
     }
 
     local code, status, response_body = json_request(userdb_endpoint, payload)
@@ -79,7 +79,7 @@ function auth_userdb_lookup(req)
     end
 
     if code == 404 then
-        return dovecot.auth.USERDB_RESULT_USER_UNKNOWN, "unknown user"
+        return dovecot.auth.USERDB_RESULT_USER_UNKNOWN, {}
     end
 
     if code >= 400 and code < 500 then
