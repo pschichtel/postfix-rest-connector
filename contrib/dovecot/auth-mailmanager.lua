@@ -1,21 +1,18 @@
 
-local ltn12 = require("ltn12")
-local http = require("socket.http")
-local json = require("json")
-
+-- Configuration
 local base_url = "http://localhost:9000/api/mailbox/"
 local passdb_endpoint = base_url .. "authenticate"
 local userdb_endpoint = base_url .. "lookup"
 local auth_token = "test123"
+local static_values = {
+    uid = "vmail",
+    gid = "vmail"
+}
+-- End of Configuration
 
-function protected_decode(data)
-    local success, res = pcall(json.decode, data)
-    if success then
-        return res
-    else
-        return {}
-    end
-end
+local ltn12 = require("ltn12")
+local http = require("socket.http")
+local json = require("json")
 
 function script_init()
     print("auth-mailmanager started!")
@@ -23,27 +20,6 @@ function script_init()
 end
 
 function script_deinit()
-end
-
-function json_request(url, authToken, payload)
-    local request_body = json.encode(payload)
-
-    local response_sink = {}
-    local request = {
-        url = url,
-        method = "POST",
-        redirect = true,
-        headers = {
-            ["X-Auth-Token"] = authToken,
-            ["Content-Type"] = "application/json",
-            ["Content-Length"] = tostring(string.len(request_body))
-        },
-        source = ltn12.source.string(request_body),
-        sink = ltn12.sink.table(response_sink)
-    }
-    local _, code, _, status = http.request(request)
-
-    return code, status, table.concat(response_sink)
 end
 
 function auth_passdb_verify(req)
@@ -61,7 +37,7 @@ function auth_passdb_verify(req)
             return dovecot.auth.PASSDB_RESULT_INTERNAL_FAILURE, "request failed (invalid response)"
         end
 
-        return dovecot.auth.PASSDB_RESULT_OK, result
+        return dovecot.auth.PASSDB_RESULT_OK, tableMerge(result, static_values)
     end
 
     if code == 404 then
@@ -99,7 +75,7 @@ function auth_userdb_lookup(req)
             return dovecot.auth.USERDB_RESULT_INTERNAL_FAILURE, "request failed (invalid response)"
         end
 
-        return dovecot.auth.USERDB_RESULT_OK, result
+        return dovecot.auth.USERDB_RESULT_OK, tableMerge(result, static_values)
     end
 
     if code == 404 then
@@ -114,6 +90,51 @@ function auth_userdb_lookup(req)
     if code >= 500 then
         req.log_error("Response status: " .. status)
         return dovecot.auth.USERDB_RESULT_INTERNAL_FAILURE, "request failed (server error)"
+    end
+end
+
+function json_request(url, authToken, payload)
+    local request_body = json.encode(payload)
+
+    local response_sink = {}
+    local request = {
+        url = url,
+        method = "POST",
+        redirect = true,
+        headers = {
+            ["X-Auth-Token"] = authToken,
+            ["Content-Type"] = "application/json",
+            ["Content-Length"] = tostring(string.len(request_body))
+        },
+        source = ltn12.source.string(request_body),
+        sink = ltn12.sink.table(response_sink)
+    }
+    local _, code, _, status = http.request(request)
+
+    return code, status, table.concat(response_sink)
+end
+
+function tableMerge(t1, t2)
+    for k,v in pairs(t2) do
+        if type(v) == "table" then
+            if type(t1[k] or false) == "table" then
+                tableMerge(t1[k] or {}, t2[k] or {})
+            else
+                t1[k] = v
+            end
+        else
+            t1[k] = v
+        end
+    end
+    return t1
+end
+
+function protected_decode(data)
+    local success, res = pcall(json.decode, data)
+    if success then
+        return res
+    else
+        return {}
     end
 end
 
@@ -147,7 +168,12 @@ dummy_req = {
 
 script_init()
 
-print(auth_passdb_verify(dummy_req))
-print(auth_userdb_lookup(dummy_req))
+local pretty = require("pl.pretty")
+
+local _, result = auth_passdb_verify(dummy_req)
+pretty.dump(result)
+
+local _, result = auth_userdb_lookup(dummy_req)
+pretty.dump(result)
 
 ]]
