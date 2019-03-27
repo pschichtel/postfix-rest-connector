@@ -22,6 +22,10 @@ end
 function script_deinit()
 end
 
+function auth_passdb_lookup(req)
+    return auth_userdb_lookup(req)
+end
+
 function auth_passdb_verify(req)
     local payload = {
         mailbox = req.user,
