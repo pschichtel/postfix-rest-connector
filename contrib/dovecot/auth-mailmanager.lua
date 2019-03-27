@@ -3,10 +3,10 @@
 local base_url = "http://localhost:9000/api/mailbox/"
 local passdb_endpoint = base_url .. "authenticate"
 local userdb_endpoint = base_url .. "lookup"
-local auth_token = "test123"
+local request_headers = {
+    ["X-Auth-Token"] = "test123"
+}
 local static_values = {
-    uid = "vmail",
-    gid = "vmail"
 }
 -- End of Configuration
 
@@ -22,17 +22,13 @@ end
 function script_deinit()
 end
 
-function auth_passdb_lookup(req)
-    return auth_userdb_lookup(req)
-end
-
-function auth_passdb_verify(req, password)
+function auth_password_verify(req, password)
     local payload = {
         mailbox = req.user,
         password = password
     }
 
-    local code, status, response_body = json_request(passdb_endpoint, auth_token, payload)
+    local code, status, response_body = json_request(passdb_endpoint, payload)
 
     if code == 200 then
         local result = protected_decode(response_body)
@@ -70,7 +66,7 @@ function auth_userdb_lookup(req)
         mailbox = req.user,
     }
 
-    local code, status, response_body = json_request(userdb_endpoint, auth_token, payload)
+    local code, status, response_body = json_request(userdb_endpoint, payload)
 
     if code == 200 then
         local result = protected_decode(response_body)
@@ -97,7 +93,7 @@ function auth_userdb_lookup(req)
     end
 end
 
-function json_request(url, authToken, payload)
+function json_request(url, payload)
     local request_body = json.encode(payload)
 
     local response_sink = {}
@@ -105,11 +101,10 @@ function json_request(url, authToken, payload)
         url = url,
         method = "POST",
         redirect = true,
-        headers = {
-            ["X-Auth-Token"] = authToken,
+        headers = tableMerge(request_headers, {
             ["Content-Type"] = "application/json",
             ["Content-Length"] = tostring(string.len(request_body))
-        },
+        }),
         source = ltn12.source.string(request_body),
         sink = ltn12.sink.table(response_sink)
     }
@@ -118,19 +113,11 @@ function json_request(url, authToken, payload)
     return code, status, table.concat(response_sink)
 end
 
-function tableMerge(t1, t2)
-    for k,v in pairs(t2) do
-        if type(v) == "table" then
-            if type(t1[k] or false) == "table" then
-                tableMerge(t1[k] or {}, t2[k] or {})
-            else
-                t1[k] = v
-            end
-        else
-            t1[k] = v
-        end
-    end
-    return t1
+function tableMerge(first_table, second_table)
+    local out = {}
+    for k, v in pairs(first_table) do out[k] = v end
+    for k,v in pairs(second_table) do out[k] = v end
+    return out
 end
 
 function protected_decode(data)
@@ -163,18 +150,18 @@ end
 
 dummy_req = {
     user = "test",
-    password = "test",
     log_debug = log,
     log_error = log,
     log_info = log,
     log_warning = log,
 }
+password = "test"
 
 script_init()
 
 local pretty = require("pl.pretty")
 
-local _, result = auth_passdb_verify(dummy_req)
+local _, result = auth_password_verify(dummy_req, password)
 pretty.dump(result)
 
 local _, result = auth_userdb_lookup(dummy_req)
