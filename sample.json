@@ -1,0 +1,22 @@
+{
+  "endpoints": [
+    {
+      "target": "http://localhost:9000/api/postfix/domain",
+      "bind-address": "0.0.0.0",
+      "bind-port": 9001,
+      "auth-token": "test123"
+    },
+    {
+      "target": "http://localhost:9000/api/postfix/mailbox",
+      "bind-address": "0.0.0.0",
+      "bind-port": 9002,
+      "auth-token": "test123"
+    },
+    {
+      "target": "http://localhost:9000/api/postfix/aliases",
+      "bind-address": "0.0.0.0",
+      "bind-port": 9003,
+      "auth-token": "test123"
+    }
+  ]
+}
