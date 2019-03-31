@@ -34,7 +34,7 @@ public class PostfixResponse {
             while (it.hasNext()) {
                 data.append(' ').append(it.next());
             }
-            return writeResponse(ch, buf, 200, results.toString());
+            return writeResponse(ch, buf, 200, data.toString());
         } else {
             return -1;
         }
