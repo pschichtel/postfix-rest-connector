@@ -64,6 +64,7 @@
         <releaseProfile>release-postfix-rest-connector</releaseProfile>
         <slf4jVersion>1.8.0-beta4</slf4jVersion>
         <javaVersion>1.8</javaVersion>
+        <dockerId>pschichtel</dockerId>
     </properties>
 
     <dependencies>
@@ -232,7 +233,11 @@
                 <version>1.0.2</version>
                 <configuration>
                     <to>
-                        <image>${project.artifactId}</image>
+                        <image>docker.io/${dockerId}/${project.artifactId}</image>
+                        <tags>
+                            <tag>latest</tag>
+                            <tag>${project.version}</tag>
+                        </tags>
                     </to>
                 </configuration>
             </plugin>
@@ -291,6 +296,20 @@
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>1.0.2</version>
+                        <executions>
+                            <execution>
+                                <id>container-build</id>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                                <phase>deploy</phase>
                             </execution>
                         </executions>
                     </plugin>
