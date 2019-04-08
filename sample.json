@@ -1,4 +1,5 @@
 {
+  "user-agent": "Postfix REST Connector",
   "endpoints": [
     {
       "target": "http://localhost:9000/api/postfix/domain",

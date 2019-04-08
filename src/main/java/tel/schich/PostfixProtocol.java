@@ -18,14 +18,27 @@
 package tel.schich;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.List;
 
-public class PostfixResponse {
-    static int writeSuccessfulResponse(SocketChannel ch, ByteBuffer buf, List<String> results) throws
+import static java.nio.charset.StandardCharsets.US_ASCII;
+
+public class PostfixProtocol {
+
+    public static String decodeRequestData(String data) {
+        try {
+            return URLDecoder.decode(data, US_ASCII.name());
+        } catch (UnsupportedEncodingException e) {
+            return data;
+        }
+    }
+
+    public static int writeSuccessfulResponse(SocketChannel ch, ByteBuffer buf, List<String> results) throws
             IOException {
         StringBuilder data = new StringBuilder();
         Iterator<String> it = results.iterator();
@@ -40,15 +53,15 @@ public class PostfixResponse {
         }
     }
 
-    static int writePermanentError(SocketChannel ch, ByteBuffer buf, String message) throws IOException {
+    public static int writePermanentError(SocketChannel ch, ByteBuffer buf, String message) throws IOException {
         return writeResponse(ch, buf, 500, message);
     }
 
-    static int writeTemporaryError(SocketChannel ch, ByteBuffer buf, String message) throws IOException {
+    public static int writeTemporaryError(SocketChannel ch, ByteBuffer buf, String message) throws IOException {
         return writeResponse(ch, buf, 400, message);
     }
 
-    static int writeResponse(SocketChannel ch, ByteBuffer buf, int code, String data) throws IOException {
+    public static int writeResponse(SocketChannel ch, ByteBuffer buf, int code, String data) throws IOException {
         byte[] payload = (String.valueOf(code) + ' ' + encodeResponseData(data) + "\r\n")
                 .getBytes(StandardCharsets.US_ASCII);
         buf.clear();
@@ -57,7 +70,7 @@ public class PostfixResponse {
         return ch.write(buf);
     }
 
-    static String encodeResponseData(String data) {
+    public static String encodeResponseData(String data) {
         StringBuilder out = new StringBuilder();
         for (char c : data.toCharArray()) {
             if (c <= 32) {

@@ -19,28 +19,21 @@ package tel.schich;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
 
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.BoundRequestBuilder;
-import org.asynchttpclient.Dsl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,16 +43,17 @@ import static java.net.StandardSocketOptions.TCP_NODELAY;
 import static java.nio.channels.SelectionKey.OP_ACCEPT;
 import static java.nio.channels.SelectionKey.OP_READ;
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static tel.schich.PostfixResponse.writePermanentError;
+import static org.asynchttpclient.Dsl.asyncHttpClient;
+import static tel.schich.PostfixProtocol.writePermanentError;
 
 public class Main {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
+        final ObjectMapper mapper = new ObjectMapper();
 
-        Configuration config;
+        final Configuration config;
         if (args.length == 1) {
             config = mapper.readValue(new File(args[0]), Configuration.class);
         } else {
@@ -69,107 +63,104 @@ public class Main {
         }
 
         final Selector selector = Selector.open();
-        AtomicBoolean keepPolling = new AtomicBoolean(true);
-        ByteBuffer buffer = ByteBuffer.allocateDirect(4096);
-        byte[] javaBuffer = new byte[4096];
+        final AtomicBoolean keepPolling = new AtomicBoolean(true);
+        final ByteBuffer buffer = ByteBuffer.allocateDirect(4096);
+        final AsyncHttpClient restClient = asyncHttpClient();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             keepPolling.set(false);
             selector.wakeup();
         }));
 
-        List<Configuration.Endpoint> endpoints = config.getEndpoints();
-        Map<Integer, Configuration.Endpoint> endpointMap = new HashMap<>(endpoints.size());
-        for (Configuration.Endpoint endpoint : endpoints) {
+        for (Configuration.Endpoint endpoint : config.getEndpoints()) {
             final ServerSocketChannel serverChannel = selector.provider().openServerSocketChannel();
 
-            InetSocketAddress bindAddress = new InetSocketAddress(endpoint.getBindAddress(), endpoint.getBindPort());
-            serverChannel.bind(bindAddress);
+            serverChannel.bind(endpoint.getAddress());
             configureChannel(serverChannel);
             serverChannel.register(selector, OP_ACCEPT);
-            endpointMap.put(getPort(bindAddress), endpoint);
 
-            LOGGER.info("Bound to address: {}", bindAddress);
+            LOGGER.info("Bound to address: {}", serverChannel.getLocalAddress());
 
         }
-        AsyncHttpClient restClient = Dsl.asyncHttpClient();
 
         while (keepPolling.get()) {
-            int n = selector.select();
-            if (n > 0) {
-                Set<SelectionKey> keys = selector.selectedKeys();
-                Iterator<SelectionKey> it = keys.iterator();
-                while (it.hasNext()) {
-                    SelectionKey key = it.next();
-                    it.remove();
+            if (selector.select() <= 0) {
+                continue;
+            }
 
-                    SelectableChannel channel = key.channel();
+            final Set<SelectionKey> keys = selector.selectedKeys();
+            final Iterator<SelectionKey> it = keys.iterator();
+            while (it.hasNext()) {
+                final SelectionKey key = it.next();
+                it.remove();
 
-                    if (key.isAcceptable() && channel instanceof ServerSocketChannel) {
-                        ServerSocketChannel ch = (ServerSocketChannel) channel;
-                        SocketChannel clientChannel = ch.accept();
-                        configureChannel(clientChannel);
-                        clientChannel.register(selector, OP_READ);
-                        LOGGER.info("Incoming connection: {}", clientChannel.getRemoteAddress());
-                        continue;
-                    }
+                final SelectableChannel channel = key.channel();
 
-                    if (!channel.isOpen()) {
-                        key.cancel();
-                        continue;
-                    }
+                if (key.isAcceptable() && channel instanceof ServerSocketChannel) {
+                    ServerSocketChannel ch = (ServerSocketChannel) channel;
+                    SocketChannel clientChannel = ch.accept();
+                    configureChannel(clientChannel);
+                    clientChannel.register(selector, OP_READ);
+                    LOGGER.info("Incoming connection: {}", clientChannel.getRemoteAddress());
+                    continue;
+                }
 
-                    if (!key.isValid()) {
-                        key.cancel();
-                        channel.close();
-                        continue;
-                    }
+                if (!channel.isOpen()) {
+                    key.cancel();
+                    continue;
+                }
 
-                    if (key.isReadable() && channel instanceof SocketChannel) {
-                        SocketChannel ch = (SocketChannel) channel;
-                        buffer.clear();
-                        int bytesRead;
-                        try {
-                            bytesRead = ch.read(buffer);
-                        } catch (IOException e) {
-                            LOGGER.error("Channel Read failed!", e);
-                            bytesRead = -1;
-                        }
-                        if (bytesRead == -1) {
-                            ch.close();
-                            key.cancel();
-                            continue;
-                        }
+                if (!key.isValid()) {
+                    key.cancel();
+                    channel.close();
+                    continue;
+                }
 
-                        buffer.flip();
-                        buffer.get(javaBuffer, 0, bytesRead);
-                        String rawRequest = new String(javaBuffer, 0, bytesRead, US_ASCII);
-
-                        Optional<PostfixLookupRequest> requestOpt = parseRequest(rawRequest);
-                        if (requestOpt.isPresent()) {
-                            PostfixLookupRequest request = requestOpt.get();
-                            if (request instanceof GetLookupRequest) {
-
-                                Configuration.Endpoint endpoint = endpointMap.get(getPort(ch.getLocalAddress()));
-
-                                String requestKey = ((GetLookupRequest) request).getKey();
-                                LOGGER.debug("Get request: {}", requestKey);
-                                BoundRequestBuilder prepareRequest = restClient.preparePost(endpoint.getTarget())
-                                        .setHeader("User-Agent", "Postfix REST Connector")
-                                        .setHeader("X-Auth-Token", endpoint.getAuthToken());
-                                ((GetLookupRequest) request)
-                                        .handleRequest(ch, buffer, requestKey, mapper, prepareRequest);
-                            } else {
-                                writePermanentError(ch, buffer, "Unknown/unsupported request");
-                            }
-                        } else {
-                            writePermanentError(ch, buffer, "Broken request!");
-                        }
-                    }
-
+                if (key.isReadable() && channel instanceof SocketChannel) {
+                    SocketChannel ch = (SocketChannel) channel;
+                    readChannel(mapper, buffer, config, restClient, key, ch);
                 }
             }
         }
+    }
+
+    private static void readChannel(ObjectMapper mapper, ByteBuffer buffer, Configuration conf, AsyncHttpClient restClient, SelectionKey key, SocketChannel ch) throws IOException {
+        buffer.clear();
+        int bytesRead;
+        try {
+            bytesRead = ch.read(buffer);
+        } catch (IOException e) {
+            LOGGER.error("Channel Read failed!", e);
+            bytesRead = -1;
+        }
+        if (bytesRead == -1) {
+            ch.close();
+            key.cancel();
+            return;
+        }
+
+        buffer.flip();
+        String rawRequest = readAsciiString(buffer);
+
+        Optional<PostfixLookupRequest> requestOpt = parseRequest(rawRequest);
+        if (!requestOpt.isPresent()) {
+            writePermanentError(ch, buffer, "Broken request!");
+            return;
+        }
+
+        PostfixLookupRequest request = requestOpt.get();
+        if (!(request instanceof GetLookupRequest)) {
+            writePermanentError(ch, buffer, "Unknown/unsupported request");
+            return;
+        }
+
+        Configuration.Endpoint endpoint = conf.getEndpoint(getPort(ch.getLocalAddress()));
+
+        BoundRequestBuilder prepareRequest = restClient.preparePost(endpoint.getTarget())
+                .setHeader("User-Agent", conf.getUserAgent())
+                .setHeader("X-Auth-Token", endpoint.getAuthToken());
+
+        request.handleRequest(ch, buffer, mapper, prepareRequest);
     }
 
     private static void configureChannel(SelectableChannel ch) throws IOException {
@@ -181,21 +172,11 @@ public class Main {
     }
 
     private static Optional<PostfixLookupRequest> parseRequest(String line) {
-        Matcher getMatcher = GetLookupRequest.PATTERN.matcher(line);
-        if (getMatcher.matches()) {
-            return Optional.of(new GetLookupRequest(decodeRequestData(getMatcher.group(1))));
-        } else {
+        Optional<PostfixLookupRequest> request = GetLookupRequest.parseRequest(line);
+        if (!request.isPresent()) {
             LOGGER.warn("Unknown request: {}", line);
-            return Optional.empty();
         }
-    }
-
-    private static String decodeRequestData(String data) {
-        try {
-            return URLDecoder.decode(data, US_ASCII.name());
-        } catch (UnsupportedEncodingException e) {
-            return data;
-        }
+        return request;
     }
 
     private static int getPort(SocketAddress address) {
@@ -203,6 +184,16 @@ public class Main {
             return ((InetSocketAddress) address).getPort();
         }
         return -1;
+    }
+
+    private static String readAsciiString(ByteBuffer buf) {
+        if (buf.isDirect()) {
+            byte[] jbuf = new byte[buf.remaining()];
+            buf.get(jbuf);
+            return new String(jbuf, US_ASCII);
+        } else {
+            return new String(buf.array(), buf.position(), buf.remaining(), US_ASCII);
+        }
     }
 
 }

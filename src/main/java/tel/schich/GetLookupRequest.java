@@ -21,23 +21,25 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.List;
+import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.asynchttpclient.BoundRequestBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static tel.schich.PostfixResponse.writePermanentError;
-import static tel.schich.PostfixResponse.writeSuccessfulResponse;
-import static tel.schich.PostfixResponse.writeTemporaryError;
+import static tel.schich.PostfixProtocol.decodeRequestData;
+import static tel.schich.PostfixProtocol.writePermanentError;
+import static tel.schich.PostfixProtocol.writeSuccessfulResponse;
+import static tel.schich.PostfixProtocol.writeTemporaryError;
 
 public class GetLookupRequest implements PostfixLookupRequest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GetLookupRequest.class);
 
-    public static final Pattern PATTERN = Pattern.compile("^get\\s+(.+)\r?\n$");
+    private static final Pattern PATTERN = Pattern.compile("^get\\s+(.+)\r?\n$");
 
     private final String key;
 
@@ -45,12 +47,8 @@ public class GetLookupRequest implements PostfixLookupRequest {
         this.key = key;
     }
 
-    public String getKey() {
-        return key;
-    }
-
-    public void handleRequest(SocketChannel ch, ByteBuffer buf, String key, ObjectMapper mapper, BoundRequestBuilder restClient) throws IOException {
-        LOGGER.info("Received key: {}", key);
+    public void handleRequest(SocketChannel ch, ByteBuffer buf, ObjectMapper mapper, BoundRequestBuilder restClient) {
+        LOGGER.debug("Get request: {}", key);
 
         restClient.setMethod("GET");
         restClient.addQueryParam("key", key);
@@ -58,33 +56,42 @@ public class GetLookupRequest implements PostfixLookupRequest {
             try {
                 if (err != null) {
                     writeTemporaryError(ch, buf, err.getMessage());
-                } else {
+                    return null;
+                }
 
-                    int statusCode = response.getStatusCode();
-                    if (statusCode == 200) {
-                        // REST call successful -> return data
-                        List<String> data = mapper.readValue(response.getResponseBodyAsStream(), new TypeReference<List<String>>() {});
-                        if (data != null) {
-                            LOGGER.info("Response: {}", String.join("", data));
-                            return writeSuccessfulResponse(ch, buf, data);
-                        } else {
-                            LOGGER.warn("No result!");
-                            return writeTemporaryError(ch, buf, "REST result was broken!");
-                        }
-                    } else if (statusCode >= 400 && statusCode < 500) {
-                        // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                        writePermanentError(ch, buf,
-                                "REST server signaled a user error, is the connector misconfigured?");
-                    } else if (statusCode >= 500 && statusCode < 600) {
-                        // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
-                        writeTemporaryError(ch, buf, "REST server had an internal error!");
+                int statusCode = response.getStatusCode();
+                if (statusCode == 200) {
+                    // REST call successful -> return data
+                    List<String> data = mapper.readValue(response.getResponseBodyAsStream(), new TypeReference<List<String>>() {});
+                    if (data != null) {
+                        LOGGER.info("Response: {}", String.join("", data));
+                        return writeSuccessfulResponse(ch, buf, data);
+                    } else {
+                        LOGGER.warn("No result!");
+                        return writeTemporaryError(ch, buf, "REST result was broken!");
                     }
+                } else if (statusCode >= 400 && statusCode < 500) {
+                    // REST call failed due to user error -> emit permanent error (connector is misconfigured)
+                    writePermanentError(ch, buf,
+                            "REST server signaled a user error, is the connector misconfigured?");
+                } else if (statusCode >= 500 && statusCode < 600) {
+                    // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
+                    writeTemporaryError(ch, buf, "REST server had an internal error!");
                 }
             } catch (IOException e) {
                 LOGGER.error("Failed to write response!", e);
             }
             return null;
         });
+    }
+
+    public  static Optional<PostfixLookupRequest> parseRequest(String line) {
+        Matcher getMatcher = PATTERN.matcher(line);
+        if (getMatcher.matches()) {
+            return Optional.of(new GetLookupRequest(decodeRequestData(getMatcher.group(1))));
+        } else {
+            return Optional.empty();
+        }
     }
 
 }

@@ -17,5 +17,12 @@
  */
 package tel.schich;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
+import org.asynchttpclient.BoundRequestBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public interface PostfixLookupRequest {
+    void handleRequest(SocketChannel ch, ByteBuffer buf, ObjectMapper mapper, BoundRequestBuilder restClient) throws IOException;
 }
