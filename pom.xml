@@ -241,6 +241,15 @@
                         </tags>
                     </to>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>container-build</id>
+                        <goals>
+                            <goal>dockerBuild</goal>
+                        </goals>
+                        <phase>package</phase>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
