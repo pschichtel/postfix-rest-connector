@@ -128,6 +128,7 @@
                     <releaseProfiles>${releaseProfile}</releaseProfiles>
                     <goals>deploy</goals>
                     <arguments>-P${releaseProfile}</arguments>
+                    <javaHome>${java.home}</javaHome>
                 </configuration>
             </plugin>
             <plugin>
