@@ -39,6 +39,8 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import tel.schich.Configuration.Endpoint;
+
 import static java.net.StandardSocketOptions.TCP_NODELAY;
 import static java.nio.channels.SelectionKey.OP_ACCEPT;
 import static java.nio.channels.SelectionKey.OP_READ;
@@ -72,7 +74,7 @@ public class Main {
             selector.wakeup();
         }));
 
-        for (Configuration.Endpoint endpoint : config.getEndpoints()) {
+        for (Endpoint endpoint : config.getEndpoints()) {
             final ServerSocketChannel serverChannel = selector.provider().openServerSocketChannel();
 
             serverChannel.bind(endpoint.getAddress());
@@ -154,11 +156,12 @@ public class Main {
             return;
         }
 
-        Configuration.Endpoint endpoint = conf.getEndpoint(getPort(ch.getLocalAddress()));
+        Endpoint endpoint = conf.getEndpoint(getPort(ch.getLocalAddress()));
 
         BoundRequestBuilder prepareRequest = restClient.preparePost(endpoint.getTarget())
                 .setHeader("User-Agent", conf.getUserAgent())
-                .setHeader("X-Auth-Token", endpoint.getAuthToken());
+                .setHeader("X-Auth-Token", endpoint.getAuthToken())
+                .setRequestTimeout(endpoint.getRequestTimeout());
 
         request.handleRequest(ch, buffer, mapper, prepareRequest);
     }

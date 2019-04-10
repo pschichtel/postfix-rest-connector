@@ -60,11 +60,12 @@ public class Configuration {
         private final String bindAddress;
         private final int bindPort;
         private final String authToken;
+        private final int requestTimeout;
 
         @JsonCreator
         public Endpoint(@JsonProperty("target") String target, @JsonProperty("bind-address") String bindAddress,
-                @JsonProperty("bind-port") int bindPort, @JsonProperty("auth-token") String authToken) {
-
+                @JsonProperty("bind-port") int bindPort, @JsonProperty("auth-token") String authToken,
+                @JsonProperty("request-timeout") int requestTimeout) {
             if (target == null) {
                 throw new IllegalArgumentException("target is required!");
             }
@@ -81,6 +82,7 @@ public class Configuration {
             }
             this.bindPort = bindPort;
             this.authToken = authToken;
+            this.requestTimeout = requestTimeout;
         }
 
         public String getTarget() {
@@ -101,6 +103,10 @@ public class Configuration {
 
         public SocketAddress getAddress() {
             return new InetSocketAddress(getBindAddress(), getBindPort());
+        }
+
+        public int getRequestTimeout() {
+            return requestTimeout;
         }
     }
 }
