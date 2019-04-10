@@ -243,11 +243,11 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>container-build</id>
+                        <id>container-local-build</id>
                         <goals>
                             <goal>dockerBuild</goal>
                         </goals>
-                        <phase>package</phase>
+                        <phase>install</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -315,7 +315,7 @@
                         <version>1.0.2</version>
                         <executions>
                             <execution>
-                                <id>container-build</id>
+                                <id>container-registry-build</id>
                                 <goals>
                                     <goal>build</goal>
                                 </goals>
