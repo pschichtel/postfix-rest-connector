@@ -20,9 +20,7 @@ package tel.schich;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -31,17 +29,10 @@ public class Configuration {
     private final String userAgent;
     private final List<Endpoint> endpoints;
 
-    private final transient Map<Integer, Endpoint> endpointMap;
-
     @JsonCreator
     public Configuration(@JsonProperty("user-agent") String userAgent, @JsonProperty("endpoints") List<Endpoint> endpoints) {
         this.userAgent = userAgent;
         this.endpoints = Collections.unmodifiableList(endpoints);
-        this.endpointMap = new HashMap<>();
-
-        for (Endpoint endpoint : this.endpoints) {
-            this.endpointMap.put(endpoint.getBindPort(), endpoint);
-        }
     }
 
     public String getUserAgent() {
@@ -50,17 +41,6 @@ public class Configuration {
 
     public List<Endpoint> getEndpoints() {
         return endpoints;
-    }
-
-    public Endpoint getEndpoint(int port) {
-        return endpointMap.get(port);
-    }
-
-    public Endpoint getEndpoint(SocketAddress address) {
-        if (address instanceof InetSocketAddress) {
-            return getEndpoint(((InetSocketAddress) address).getPort());
-        }
-        return null;
     }
 
     public static final class Endpoint {

@@ -78,7 +78,7 @@ public class Main {
 
             serverChannel.bind(endpoint.getAddress());
             configureChannel(serverChannel);
-            serverChannel.register(selector, OP_ACCEPT);
+            serverChannel.register(selector, OP_ACCEPT, endpoint);
 
             LOGGER.info("Bound endpoint {} to address: {}", endpoint.getName(), serverChannel.getLocalAddress());
 
@@ -101,9 +101,9 @@ public class Main {
                     ServerSocketChannel ch = (ServerSocketChannel) channel;
                     SocketChannel clientChannel = ch.accept();
                     configureChannel(clientChannel);
-                    clientChannel.register(selector, OP_READ);
+                    Endpoint endpoint = (Endpoint) key.attachment();
+                    clientChannel.register(selector, OP_READ, endpoint);
                     SocketAddress remoteAddress = clientChannel.getRemoteAddress();
-                    Endpoint endpoint = config.getEndpoint(remoteAddress);
                     LOGGER.info("Incoming connection from {} on endpoint {}", remoteAddress, endpoint.getName());
                     continue;
                 }
@@ -157,7 +157,7 @@ public class Main {
             return;
         }
 
-        Endpoint endpoint = conf.getEndpoint(ch.getLocalAddress());
+        Endpoint endpoint = (Endpoint) key.attachment();
 
         BoundRequestBuilder prepareRequest = restClient.preparePost(endpoint.getTarget())
                 .setHeader("User-Agent", conf.getUserAgent())

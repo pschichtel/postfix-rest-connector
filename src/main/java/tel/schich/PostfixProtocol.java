@@ -38,8 +38,7 @@ public class PostfixProtocol {
         }
     }
 
-    public static int writeSuccessfulResponse(SocketChannel ch, ByteBuffer buf, List<String> results) throws
-            IOException {
+    public static int writeSuccessfulResponse(SocketChannel ch, ByteBuffer buf, List<String> results) throws IOException {
         StringBuilder data = new StringBuilder();
         Iterator<String> it = results.iterator();
         if (it.hasNext()) {
