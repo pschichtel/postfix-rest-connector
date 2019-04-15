@@ -87,7 +87,7 @@ public class GetLookupRequest implements PostfixLookupRequest {
         });
     }
 
-    public  static Optional<PostfixLookupRequest> parseRequest(String line) {
+    public static Optional<PostfixLookupRequest> parseRequest(String line) {
         Matcher getMatcher = PATTERN.matcher(line);
         if (getMatcher.matches()) {
             return Optional.of(new GetLookupRequest(decodeRequestData(getMatcher.group(1))));
