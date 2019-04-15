@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -55,7 +56,15 @@ public class Configuration {
         return endpointMap.get(port);
     }
 
+    public Endpoint getEndpoint(SocketAddress address) {
+        if (address instanceof InetSocketAddress) {
+            return getEndpoint(((InetSocketAddress) address).getPort());
+        }
+        return null;
+    }
+
     public static final class Endpoint {
+        private final String name;
         private final String target;
         private final String bindAddress;
         private final int bindPort;
@@ -63,17 +72,14 @@ public class Configuration {
         private final int requestTimeout;
 
         @JsonCreator
-        public Endpoint(@JsonProperty("target") String target, @JsonProperty("bind-address") String bindAddress,
-                @JsonProperty("bind-port") int bindPort, @JsonProperty("auth-token") String authToken,
-                @JsonProperty("request-timeout") int requestTimeout) {
-            if (target == null) {
-                throw new IllegalArgumentException("target is required!");
-            }
+        public Endpoint(@JsonProperty("name") String name, @JsonProperty("target") String target,
+                @JsonProperty("bind-address") String bindAddress, @JsonProperty("bind-port") int bindPort,
+                @JsonProperty("auth-token") String authToken, @JsonProperty("request-timeout") int requestTimeout) {
+            Objects.requireNonNull(name, "name is required!");
+            Objects.requireNonNull(target, "target is required!");
+            Objects.requireNonNull(authToken, "auth token is required!");
 
-            if (authToken == null) {
-                throw new IllegalArgumentException("auth token is required!");
-            }
-
+            this.name = name;
             this.target = target;
             if (bindAddress == null) {
                 this.bindAddress = "127.0.0.1";
@@ -107,6 +113,10 @@ public class Configuration {
 
         public int getRequestTimeout() {
             return requestTimeout;
+        }
+
+        public String getName() {
+            return name;
         }
     }
 }

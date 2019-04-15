@@ -41,14 +41,16 @@ public class GetLookupRequest implements PostfixLookupRequest {
 
     private static final Pattern PATTERN = Pattern.compile("^get\\s+(.+)\r?\n$");
 
+    private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<List<String>>() {};
+
     private final String key;
 
     public GetLookupRequest(String key) {
         this.key = key;
     }
 
-    public void handleRequest(SocketChannel ch, ByteBuffer buf, ObjectMapper mapper, BoundRequestBuilder restClient) {
-        LOGGER.debug("Get request: {}", key);
+    public void handleRequest(SocketChannel ch, ByteBuffer buf, ObjectMapper mapper, Configuration.Endpoint endpoint, BoundRequestBuilder restClient) {
+        LOGGER.debug("Get request on endpoint {}: {}", endpoint.getName(), key);
 
         restClient.setMethod("GET");
         restClient.addQueryParam("key", key);
@@ -62,7 +64,7 @@ public class GetLookupRequest implements PostfixLookupRequest {
                 int statusCode = response.getStatusCode();
                 if (statusCode == 200) {
                     // REST call successful -> return data
-                    List<String> data = mapper.readValue(response.getResponseBodyAsStream(), new TypeReference<List<String>>() {});
+                    List<String> data = mapper.readValue(response.getResponseBodyAsStream(), STRING_LIST_TYPE);
                     if (data != null) {
                         LOGGER.info("Response: {}", String.join("", data));
                         return writeSuccessfulResponse(ch, buf, data);

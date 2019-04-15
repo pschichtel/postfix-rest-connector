@@ -2,6 +2,7 @@
   "user-agent": "Postfix REST Connector",
   "endpoints": [
     {
+      "name": "domain-lookup",
       "target": "http://localhost:9000/api/postfix/domain",
       "bind-address": "0.0.0.0",
       "bind-port": 9001,
@@ -9,6 +10,7 @@
       "request-timeout": 2000
     },
     {
+      "name": "mailbox-lookup",
       "target": "http://localhost:9000/api/postfix/mailbox",
       "bind-address": "0.0.0.0",
       "bind-port": 9002,
@@ -16,6 +18,7 @@
       "request-timeout": 2000
     },
     {
+      "name": "alias-lookup",
       "target": "http://localhost:9000/api/postfix/aliases",
       "bind-address": "0.0.0.0",
       "bind-port": 9003,

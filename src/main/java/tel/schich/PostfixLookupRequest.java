@@ -24,5 +24,5 @@ import org.asynchttpclient.BoundRequestBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public interface PostfixLookupRequest {
-    void handleRequest(SocketChannel ch, ByteBuffer buf, ObjectMapper mapper, BoundRequestBuilder restClient) throws IOException;
+    void handleRequest(SocketChannel ch, ByteBuffer buf, ObjectMapper mapper, Configuration.Endpoint endpoint, BoundRequestBuilder restClient) throws IOException;
 }

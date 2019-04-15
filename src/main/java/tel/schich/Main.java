@@ -19,7 +19,6 @@ package tel.schich;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
@@ -81,7 +80,7 @@ public class Main {
             configureChannel(serverChannel);
             serverChannel.register(selector, OP_ACCEPT);
 
-            LOGGER.info("Bound to address: {}", serverChannel.getLocalAddress());
+            LOGGER.info("Bound endpoint {} to address: {}", endpoint.getName(), serverChannel.getLocalAddress());
 
         }
 
@@ -103,7 +102,9 @@ public class Main {
                     SocketChannel clientChannel = ch.accept();
                     configureChannel(clientChannel);
                     clientChannel.register(selector, OP_READ);
-                    LOGGER.info("Incoming connection: {}", clientChannel.getRemoteAddress());
+                    SocketAddress remoteAddress = clientChannel.getRemoteAddress();
+                    Endpoint endpoint = config.getEndpoint(remoteAddress);
+                    LOGGER.info("Incoming connection from {} on endpoint {}", remoteAddress, endpoint.getName());
                     continue;
                 }
 
@@ -156,14 +157,14 @@ public class Main {
             return;
         }
 
-        Endpoint endpoint = conf.getEndpoint(getPort(ch.getLocalAddress()));
+        Endpoint endpoint = conf.getEndpoint(ch.getLocalAddress());
 
         BoundRequestBuilder prepareRequest = restClient.preparePost(endpoint.getTarget())
                 .setHeader("User-Agent", conf.getUserAgent())
                 .setHeader("X-Auth-Token", endpoint.getAuthToken())
                 .setRequestTimeout(endpoint.getRequestTimeout());
 
-        request.handleRequest(ch, buffer, mapper, prepareRequest);
+        request.handleRequest(ch, buffer, mapper, endpoint, prepareRequest);
     }
 
     private static void configureChannel(SelectableChannel ch) throws IOException {
@@ -180,13 +181,6 @@ public class Main {
             LOGGER.warn("Unknown request: {}", line);
         }
         return request;
-    }
-
-    private static int getPort(SocketAddress address) {
-        if (address instanceof InetSocketAddress) {
-            return ((InetSocketAddress) address).getPort();
-        }
-        return -1;
     }
 
     private static String readAsciiString(ByteBuffer buf) {
