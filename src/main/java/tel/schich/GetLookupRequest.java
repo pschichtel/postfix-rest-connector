@@ -82,6 +82,11 @@ public class GetLookupRequest implements PostfixLookupRequest {
                 }
             } catch (IOException e) {
                 LOGGER.error("Failed to write response!", e);
+                try {
+                    writeTemporaryError(ch, buf, "REST connector encountered a problem!");
+                } catch (IOException ex) {
+                    LOGGER.error("Wile recovering from an error failed to write response!", e);
+                }
             }
             return null;
         });
