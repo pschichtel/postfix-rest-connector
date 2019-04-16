@@ -20,14 +20,12 @@ package tel.schich;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.asynchttpclient.BoundRequestBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static tel.schich.PostfixProtocol.decodeRequestData;
@@ -41,8 +39,6 @@ public class GetLookupRequest implements PostfixLookupRequest {
 
     private static final Pattern PATTERN = Pattern.compile("^get\\s+(.+)\r?\n$");
 
-    private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<List<String>>() {};
-
     private final String key;
 
     public GetLookupRequest(String key) {
@@ -50,7 +46,7 @@ public class GetLookupRequest implements PostfixLookupRequest {
     }
 
     public void handleRequest(SocketChannel ch, ByteBuffer buf, ObjectMapper mapper, Configuration.Endpoint endpoint, BoundRequestBuilder restClient) {
-        LOGGER.debug("Get request on endpoint {}: {}", endpoint.getName(), key);
+        LOGGER.info("Get request on endpoint {}: {}", endpoint.getName(), key);
 
         restClient.setMethod("GET");
         restClient.addQueryParam("key", key);
@@ -64,9 +60,9 @@ public class GetLookupRequest implements PostfixLookupRequest {
                 int statusCode = response.getStatusCode();
                 if (statusCode == 200) {
                     // REST call successful -> return data
-                    List<String> data = mapper.readValue(response.getResponseBodyAsStream(), STRING_LIST_TYPE);
+                    String data = response.getResponseBody();
                     if (data != null) {
-                        LOGGER.info("Response: {}", String.join("", data));
+                        LOGGER.info("Response: {}", data);
                         return writeSuccessfulResponse(ch, buf, data);
                     } else {
                         LOGGER.warn("No result!");

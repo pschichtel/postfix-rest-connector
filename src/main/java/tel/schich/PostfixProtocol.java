@@ -23,8 +23,6 @@ import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.Iterator;
-import java.util.List;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
@@ -38,18 +36,8 @@ public class PostfixProtocol {
         }
     }
 
-    public static int writeSuccessfulResponse(SocketChannel ch, ByteBuffer buf, List<String> results) throws IOException {
-        StringBuilder data = new StringBuilder();
-        Iterator<String> it = results.iterator();
-        if (it.hasNext()) {
-            data.append(it.next());
-            while (it.hasNext()) {
-                data.append(' ').append(it.next());
-            }
-            return writeResponse(ch, buf, 200, data.toString());
-        } else {
-            return -1;
-        }
+    public static int writeSuccessfulResponse(SocketChannel ch, ByteBuffer buf, String data) throws IOException {
+        return writeResponse(ch, buf, 200, data);
     }
 
     public static int writePermanentError(SocketChannel ch, ByteBuffer buf, String message) throws IOException {
