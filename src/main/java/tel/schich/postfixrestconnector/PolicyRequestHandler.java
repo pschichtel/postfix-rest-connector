@@ -53,6 +53,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
     public Endpoint getEndpoint() {
         return endpoint;
     }
+
     public ReadResult readRequest(ByteBuffer buf, StringBuilder out) {
         String s = readAsciiString(buf);
         boolean lastIsLineBreak = out.length() > 0 && out.charAt(out.length() - 1) == '\n';
