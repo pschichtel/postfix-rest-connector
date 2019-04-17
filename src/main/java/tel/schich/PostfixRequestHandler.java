@@ -20,9 +20,14 @@ package tel.schich;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import org.asynchttpclient.BoundRequestBuilder;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
-public interface PostfixLookupRequest {
-    void handleRequest(SocketChannel ch, ByteBuffer buf, ObjectMapper mapper, Configuration.Endpoint endpoint, BoundRequestBuilder restClient) throws IOException;
+public interface PostfixRequestHandler {
+    Endpoint getEndpoint();
+    ReadResult readRequest(ByteBuffer buf, StringBuilder out) throws IOException;
+    void handleRequest(SocketChannel ch, String rawRequest) throws IOException;
+    void handleReadError(SocketChannel ch) throws IOException;
+
+    enum ReadResult {
+        PENDING, COMPLETE, BROKEN
+    }
 }

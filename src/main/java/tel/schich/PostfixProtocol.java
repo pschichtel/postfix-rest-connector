@@ -21,14 +21,30 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+
+import tel.schich.PostfixRequestHandler.ReadResult;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
 public class PostfixProtocol {
 
-    public static String decodeRequestData(String data) {
+    public static String readAsciiString(ByteBuffer buf) {
+        if (!buf.hasRemaining()) {
+            return "";
+        }
+        if (buf.isDirect()) {
+            byte[] jbuf = new byte[buf.remaining()];
+            buf.get(jbuf);
+            return new String(jbuf, US_ASCII);
+        } else {
+            return new String(buf.array(), buf.position(), buf.remaining(), US_ASCII);
+        }
+    }
+
+    public static String decodeURLEncodedData(String data) {
         try {
             return URLDecoder.decode(data, US_ASCII.name());
         } catch (UnsupportedEncodingException e) {
@@ -36,41 +52,18 @@ public class PostfixProtocol {
         }
     }
 
-    public static int writeSuccessfulResponse(SocketChannel ch, ByteBuffer buf, String data) throws IOException {
-        return writeResponse(ch, buf, 200, data);
-    }
-
-    public static int writePermanentError(SocketChannel ch, ByteBuffer buf, String message) throws IOException {
-        return writeResponse(ch, buf, 500, message);
-    }
-
-    public static int writeTemporaryError(SocketChannel ch, ByteBuffer buf, String message) throws IOException {
-        return writeResponse(ch, buf, 400, message);
-    }
-
-    public static int writeResponse(SocketChannel ch, ByteBuffer buf, int code, String data) throws IOException {
-        byte[] payload = (String.valueOf(code) + ' ' + encodeResponseData(data) + "\r\n")
-                .getBytes(StandardCharsets.US_ASCII);
-        buf.clear();
-        buf.put(payload);
-        buf.flip();
-        return ch.write(buf);
-    }
-
-    public static String encodeResponseData(String data) {
-        StringBuilder out = new StringBuilder();
-        for (char c : data.toCharArray()) {
-            if (c <= 32) {
-                out.append('%');
-                String hex = Integer.toHexString(c);
-                if (hex.length() == 1) {
-                    out.append('0');
-                }
-                out.append(hex);
-            } else {
-                out.append(c);
-            }
+    public static ReadResult readToEnd(StringBuilder out, String input, String end) {
+        int endIndex = input.indexOf(end);
+        if (endIndex == -1) {
+            out.append(input);
+            return ReadResult.PENDING;
         }
-        return out.toString();
+
+        if (endIndex != (input.length() - end.length())) {
+            return ReadResult.BROKEN;
+        }
+
+        out.append(input);
+        return ReadResult.COMPLETE;
     }
 }

@@ -21,35 +21,34 @@ import java.io.File;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.asynchttpclient.AsyncHttpClient;
-import org.asynchttpclient.BoundRequestBuilder;
+import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import tel.schich.Configuration.Endpoint;
-
 import static java.net.StandardSocketOptions.TCP_NODELAY;
 import static java.nio.channels.SelectionKey.OP_ACCEPT;
 import static java.nio.channels.SelectionKey.OP_READ;
-import static java.nio.charset.StandardCharsets.US_ASCII;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
-import static tel.schich.PostfixProtocol.writePermanentError;
 
 public class Main {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+    private static final int READ_BUFFER_SIZE = 8196;
 
     public static void main(String[] args) throws IOException {
         final ObjectMapper mapper = new ObjectMapper();
@@ -65,8 +64,8 @@ public class Main {
 
         final Selector selector = Selector.open();
         final AtomicBoolean keepPolling = new AtomicBoolean(true);
-        final ByteBuffer buffer = ByteBuffer.allocateDirect(4096);
-        final AsyncHttpClient restClient = asyncHttpClient();
+        final ByteBuffer buffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
+        final AsyncHttpClient restClient = getConfiguredClient(config);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             keepPolling.set(false);
@@ -76,13 +75,27 @@ public class Main {
         for (Endpoint endpoint : config.getEndpoints()) {
             final ServerSocketChannel serverChannel = selector.provider().openServerSocketChannel();
 
+            final PostfixRequestHandler request;
+            switch (endpoint.getMode()) {
+            case LookupRequestHandler.MODE_NAME:
+                request = new LookupRequestHandler(endpoint, restClient);
+                break;
+            case PolicyRequestHandler.MODE_NAME:
+                request = new PolicyRequestHandler(endpoint, restClient, mapper);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown mode " + endpoint.getMode() + "!");
+            }
+
             serverChannel.bind(endpoint.getAddress());
             configureChannel(serverChannel);
-            serverChannel.register(selector, OP_ACCEPT, endpoint);
+            serverChannel.register(selector, OP_ACCEPT, request);
 
             LOGGER.info("Bound endpoint {} to address: {}", endpoint.getName(), serverChannel.getLocalAddress());
 
         }
+
+        Map<Channel, StringBuilder> pendingRequests = new HashMap<>();
 
         while (keepPolling.get()) {
             if (selector.select() <= 0) {
@@ -101,8 +114,9 @@ public class Main {
                     ServerSocketChannel ch = (ServerSocketChannel) channel;
                     SocketChannel clientChannel = ch.accept();
                     configureChannel(clientChannel);
-                    Endpoint endpoint = (Endpoint) key.attachment();
-                    clientChannel.register(selector, OP_READ, endpoint);
+                    PostfixRequestHandler request = (PostfixRequestHandler) key.attachment();
+                    Endpoint endpoint = request.getEndpoint();
+                    clientChannel.register(selector, OP_READ, request);
                     SocketAddress remoteAddress = clientChannel.getRemoteAddress();
                     LOGGER.info("Incoming connection from {} on endpoint {}", remoteAddress, endpoint.getName());
                     continue;
@@ -110,24 +124,27 @@ public class Main {
 
                 if (!channel.isOpen()) {
                     key.cancel();
+                    pendingRequests.remove(channel);
                     continue;
                 }
 
                 if (!key.isValid()) {
-                    key.cancel();
                     channel.close();
+                    key.cancel();
+                    pendingRequests.remove(channel);
                     continue;
                 }
 
                 if (key.isReadable() && channel instanceof SocketChannel) {
                     SocketChannel ch = (SocketChannel) channel;
-                    readChannel(mapper, buffer, config, restClient, key, ch);
+                    PostfixRequestHandler handler = (PostfixRequestHandler) key.attachment();
+                    readChannel(ch, buffer, handler, pendingRequests);
                 }
             }
         }
     }
 
-    private static void readChannel(ObjectMapper mapper, ByteBuffer buffer, Configuration conf, AsyncHttpClient restClient, SelectionKey key, SocketChannel ch) throws IOException {
+    private static void readChannel(SocketChannel ch, ByteBuffer buffer, PostfixRequestHandler handler,  Map<Channel, StringBuilder> pendingRequests) throws IOException {
         buffer.clear();
         int bytesRead;
         try {
@@ -138,33 +155,22 @@ public class Main {
         }
         if (bytesRead == -1) {
             ch.close();
-            key.cancel();
             return;
         }
 
         buffer.flip();
-        String rawRequest = readAsciiString(buffer);
+        StringBuilder builder = pendingRequests.computeIfAbsent(ch, c -> new StringBuilder());
 
-        Optional<PostfixLookupRequest> requestOpt = parseRequest(rawRequest);
-        if (!requestOpt.isPresent()) {
-            writePermanentError(ch, buffer, "Broken request!");
+        switch (handler.readRequest(buffer, builder)) {
+        case BROKEN:
+            handler.handleReadError(ch);
             return;
-        }
-
-        PostfixLookupRequest request = requestOpt.get();
-        if (!(request instanceof GetLookupRequest)) {
-            writePermanentError(ch, buffer, "Unknown/unsupported request");
+        case PENDING:
             return;
+        case COMPLETE:
+            pendingRequests.remove(ch);
+            handler.handleRequest(ch, builder.toString());
         }
-
-        Endpoint endpoint = (Endpoint) key.attachment();
-
-        BoundRequestBuilder prepareRequest = restClient.preparePost(endpoint.getTarget())
-                .setHeader("User-Agent", conf.getUserAgent())
-                .setHeader("X-Auth-Token", endpoint.getAuthToken())
-                .setRequestTimeout(endpoint.getRequestTimeout());
-
-        request.handleRequest(ch, buffer, mapper, endpoint, prepareRequest);
     }
 
     private static void configureChannel(SelectableChannel ch) throws IOException {
@@ -175,22 +181,11 @@ public class Main {
         }
     }
 
-    private static Optional<PostfixLookupRequest> parseRequest(String line) {
-        Optional<PostfixLookupRequest> request = GetLookupRequest.parseRequest(line);
-        if (!request.isPresent()) {
-            LOGGER.warn("Unknown request: {}", line);
-        }
-        return request;
-    }
+    private static AsyncHttpClient getConfiguredClient(Configuration config) {
+        DefaultAsyncHttpClientConfig.Builder builder = new DefaultAsyncHttpClientConfig.Builder()
+                .setUserAgent(config.getUserAgent());
 
-    private static String readAsciiString(ByteBuffer buf) {
-        if (buf.isDirect()) {
-            byte[] jbuf = new byte[buf.remaining()];
-            buf.get(jbuf);
-            return new String(jbuf, US_ASCII);
-        } else {
-            return new String(buf.array(), buf.position(), buf.remaining(), US_ASCII);
-        }
+        return asyncHttpClient(builder);
     }
 
 }
