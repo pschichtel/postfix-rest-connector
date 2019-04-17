@@ -79,8 +79,9 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         LOGGER.info("Policy request on endpoint {}: {}", endpoint.getName(), rawRequest);
 
         List<Param> params = parseRequest(rawRequest);
-        if (params == null) {
+        if (params == null || params.isEmpty()) {
             writePermanentError(ch, "broken request");
+            ch.close();
             return;
         }
 
