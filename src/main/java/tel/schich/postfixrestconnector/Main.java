@@ -38,8 +38,6 @@ public class Main {
         RestConnector restConnector = new RestConnector();
         Runtime.getRuntime().addShutdownHook(new Thread(restConnector::stop));
 
-
-
         restConnector.start(SelectorProvider.provider(), config);
     }
 
