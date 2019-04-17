@@ -81,6 +81,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         List<Param> params = parseRequest(rawRequest);
         if (params == null) {
             writePermanentError(ch, "broken request");
+            return;
         }
 
         BoundRequestBuilder prepareRequest = http.preparePost(endpoint.getTarget())
