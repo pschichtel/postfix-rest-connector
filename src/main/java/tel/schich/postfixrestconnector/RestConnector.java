@@ -28,7 +28,7 @@ import static org.asynchttpclient.Dsl.asyncHttpClient;
 
 public class RestConnector {
     private static final Logger LOGGER = LoggerFactory.getLogger(RestConnector.class);
-    private static final int READ_BUFFER_SIZE = 8196;
+    private static final int READ_BUFFER_SIZE = 2048;
 
     private volatile Selector selector;
     private volatile boolean keepPolling = true;
