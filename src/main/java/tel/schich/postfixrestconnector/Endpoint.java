@@ -1,4 +1,4 @@
-package tel.schich;
+package tel.schich.postfixrestconnector;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;

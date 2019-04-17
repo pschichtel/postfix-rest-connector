@@ -15,17 +15,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich;
+package tel.schich.postfixrestconnector;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
 
-import tel.schich.PostfixRequestHandler.ReadResult;
+import tel.schich.postfixrestconnector.PostfixRequestHandler.ReadResult;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 

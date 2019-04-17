@@ -15,29 +15,19 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich;
+package tel.schich.postfixrestconnector;
 
-import java.util.Collections;
-import java.util.List;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
-public class Configuration {
-    private final String userAgent;
-    private final List<Endpoint> endpoints;
+public interface PostfixRequestHandler {
+    Endpoint getEndpoint();
+    ReadResult readRequest(ByteBuffer buf, StringBuilder out) throws IOException;
+    void handleRequest(SocketChannel ch, String rawRequest) throws IOException;
+    void handleReadError(SocketChannel ch) throws IOException;
 
-    @JsonCreator
-    public Configuration(@JsonProperty("user-agent") String userAgent, @JsonProperty("endpoints") List<Endpoint> endpoints) {
-        this.userAgent = userAgent;
-        this.endpoints = Collections.unmodifiableList(endpoints);
+    enum ReadResult {
+        PENDING, COMPLETE, BROKEN
     }
-
-    public String getUserAgent() {
-        return userAgent;
-    }
-
-    public List<Endpoint> getEndpoints() {
-        return endpoints;
-    }
-
 }

@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich;
+package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,8 +26,8 @@ import org.asynchttpclient.BoundRequestBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static tel.schich.PostfixProtocol.readAsciiString;
-import static tel.schich.PostfixProtocol.readToEnd;
+import static tel.schich.postfixrestconnector.PostfixProtocol.readAsciiString;
+import static tel.schich.postfixrestconnector.PostfixProtocol.readToEnd;
 
 public class LookupRequestHandler implements PostfixRequestHandler {
 
@@ -51,7 +51,7 @@ public class LookupRequestHandler implements PostfixRequestHandler {
     }
 
     @Override
-    public ReadResult readRequest(ByteBuffer buf, StringBuilder out) throws IOException {
+    public ReadResult readRequest(ByteBuffer buf, StringBuilder out) {
         String s = readAsciiString(buf);
         return readToEnd(out, s, END);
     }
@@ -65,9 +65,10 @@ public class LookupRequestHandler implements PostfixRequestHandler {
     public void handleRequest(SocketChannel ch, String rawRequest) throws IOException {
         LOGGER.info("Lookup request on endpoint {}: {}", endpoint.getName(), rawRequest);
 
-        if (!rawRequest.startsWith(LOOKUP_PREFIX)) {
+        if (rawRequest.length() <= LOOKUP_PREFIX.length() || !rawRequest.startsWith(LOOKUP_PREFIX)) {
             writePermanentError(ch, "Broken request!");
             ch.close();
+            return;
         }
 
         String lookupKey = PostfixProtocol.decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());

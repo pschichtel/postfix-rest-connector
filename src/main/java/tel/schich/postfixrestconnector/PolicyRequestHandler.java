@@ -1,4 +1,4 @@
-package tel.schich;
+package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -13,8 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static tel.schich.PostfixProtocol.readAsciiString;
-import static tel.schich.PostfixProtocol.readToEnd;
+import static tel.schich.postfixrestconnector.PostfixProtocol.readAsciiString;
+import static tel.schich.postfixrestconnector.PostfixProtocol.readToEnd;
 
 public class PolicyRequestHandler implements PostfixRequestHandler {
 

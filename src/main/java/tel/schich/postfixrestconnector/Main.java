@@ -15,19 +15,32 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich;
+package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.spi.SelectorProvider;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-public interface PostfixRequestHandler {
-    Endpoint getEndpoint();
-    ReadResult readRequest(ByteBuffer buf, StringBuilder out) throws IOException;
-    void handleRequest(SocketChannel ch, String rawRequest) throws IOException;
-    void handleReadError(SocketChannel ch) throws IOException;
+public class Main {
 
-    enum ReadResult {
-        PENDING, COMPLETE, BROKEN
+
+    public static void main(String[] args) throws IOException {
+        final Path config;
+        if (args.length == 1) {
+            config = Paths.get(args[0]);
+        } else {
+            System.out.println("Usage: <config path>");
+            System.exit(1);
+            return;
+        }
+
+        RestConnector restConnector = new RestConnector();
+        Runtime.getRuntime().addShutdownHook(new Thread(restConnector::stop));
+
+
+
+        restConnector.start(SelectorProvider.provider(), config);
     }
+
 }
