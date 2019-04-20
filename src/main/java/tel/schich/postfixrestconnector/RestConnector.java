@@ -118,14 +118,11 @@ public class RestConnector {
                     continue;
                 }
 
-                if (!channel.isOpen()) {
-                    key.cancel();
-                    pendingRequests.remove(channel);
-                    continue;
-                }
-
                 if (!key.isValid()) {
                     channel.close();
+                }
+
+                if (!channel.isOpen()) {
                     key.cancel();
                     pendingRequests.remove(channel);
                     continue;
