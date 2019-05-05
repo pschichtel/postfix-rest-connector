@@ -20,12 +20,12 @@ package tel.schich.postfixrestconnector;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.BoundRequestBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.nio.charset.StandardCharsets.US_ASCII;
 import static tel.schich.postfixrestconnector.PostfixProtocol.readAsciiString;
 import static tel.schich.postfixrestconnector.PostfixProtocol.readToEnd;
 
@@ -33,9 +33,10 @@ public class LookupRequestHandler implements PostfixRequestHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LookupRequestHandler.class);
     public static final String MODE_NAME = "lookup";
-    private static final String END = "\n";
 
-    public static final String LOOKUP_PREFIX = "get ";
+    private static final String LOOKUP_PREFIX = "get ";
+    private static final int MAXIMUM_RESPONSE_LENGTH = 4096;
+    private static final String END = "\n";
 
     private final Endpoint endpoint;
     private final AsyncHttpClient http;
@@ -112,7 +113,7 @@ public class LookupRequestHandler implements PostfixRequestHandler {
                 try {
                     writeError(ch, "REST connector encountered a problem!");
                 } catch (IOException ex) {
-                    LOGGER.error("Wile recovering from an error failed to write response!", e);
+                    LOGGER.error("While recovering from an error failed to write response!", e);
                 }
             }
             return null;
@@ -132,8 +133,11 @@ public class LookupRequestHandler implements PostfixRequestHandler {
     }
 
     public static int writeResponse(SocketChannel ch, int code, String data) throws IOException {
-        byte[] payload = (String.valueOf(code) + ' ' + encodeResponseData(data) + "\r\n")
-                .getBytes(StandardCharsets.US_ASCII);
+        byte[] payload = (String.valueOf(code) + ' ' + encodeResponseData(data) + END).getBytes(US_ASCII);
+        if (payload.length > MAXIMUM_RESPONSE_LENGTH)
+        {
+            throw new IOException("response to long");
+        }
         return ch.write(ByteBuffer.wrap(payload));
     }
 
