@@ -90,12 +90,14 @@ public class LookupRequestHandler implements PostfixRequestHandler {
                 if (statusCode == 200) {
                     // REST call successful -> return data
                     String data = response.getResponseBody();
-                    if (data != null) {
-                        LOGGER.info("Response: {}", data);
-                        return writeSuccessfulResponse(ch, data);
-                    } else {
+                    if (data == null) {
                         LOGGER.warn("No result!");
                         return writeError(ch, "REST result was broken!");
+                    } else if (data.isEmpty()) {
+                        return writeNotFoundResponse(ch);
+                    } else {
+                        LOGGER.info("Response: {}", data);
+                        return writeSuccessfulResponse(ch, data);
                     }
                 } else if (statusCode == 404) {
                     return writeNotFoundResponse(ch);
