@@ -58,7 +58,7 @@ public class LookupRequestHandler implements PostfixRequestHandler {
 
     @Override
     public void handleReadError(SocketChannel ch) throws IOException {
-        writeTemporaryError(ch, "received broken request");
+        writeError(ch, "received broken request");
         ch.close();
     }
 
@@ -66,7 +66,7 @@ public class LookupRequestHandler implements PostfixRequestHandler {
         LOGGER.info("Lookup request on endpoint {}: {}", endpoint.getName(), rawRequest);
 
         if (rawRequest.length() <= LOOKUP_PREFIX.length() || !rawRequest.startsWith(LOOKUP_PREFIX)) {
-            writePermanentError(ch, "Broken request!");
+            writeError(ch, "Broken request!");
             ch.close();
             return;
         }
@@ -81,7 +81,7 @@ public class LookupRequestHandler implements PostfixRequestHandler {
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
                 if (err != null) {
-                    writeTemporaryError(ch, err.getMessage());
+                    writeError(ch, err.getMessage());
                     return null;
                 }
 
@@ -94,19 +94,23 @@ public class LookupRequestHandler implements PostfixRequestHandler {
                         return writeSuccessfulResponse(ch, data);
                     } else {
                         LOGGER.warn("No result!");
-                        return writeTemporaryError(ch, "REST result was broken!");
+                        return writeError(ch, "REST result was broken!");
                     }
+                } else if (statusCode == 404) {
+                    return writeNotFoundResponse(ch);
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                    writePermanentError(ch, "REST server signaled a user error, is the connector misconfigured?");
+                    writeError(ch, "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
                 } else if (statusCode >= 500 && statusCode < 600) {
                     // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
-                    writeTemporaryError(ch, "REST server had an internal error!");
+                    writeError(ch, "REST server had an internal error: " + statusCode);
+                } else {
+                    writeError(ch, "REST server responded with an unspecified code: " + statusCode);
                 }
             } catch (IOException e) {
                 LOGGER.error("Failed to write response!", e);
                 try {
-                    writeTemporaryError(ch, "REST connector encountered a problem!");
+                    writeError(ch, "REST connector encountered a problem!");
                 } catch (IOException ex) {
                     LOGGER.error("Wile recovering from an error failed to write response!", e);
                 }
@@ -119,11 +123,11 @@ public class LookupRequestHandler implements PostfixRequestHandler {
         return writeResponse(ch, 200, data);
     }
 
-    public static int writePermanentError(SocketChannel ch, String message) throws IOException {
-        return writeResponse(ch, 500, message);
+    public static int writeNotFoundResponse(SocketChannel ch) throws IOException {
+        return writeResponse(ch, 500, "key not found");
     }
 
-    public static int writeTemporaryError(SocketChannel ch, String message) throws IOException {
+    public static int writeError(SocketChannel ch, String message) throws IOException {
         return writeResponse(ch, 400, message);
     }
 
