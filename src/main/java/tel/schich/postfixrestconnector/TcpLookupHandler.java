@@ -29,9 +29,9 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static tel.schich.postfixrestconnector.PostfixProtocol.readAsciiString;
 import static tel.schich.postfixrestconnector.PostfixProtocol.readToEnd;
 
-public class LookupRequestHandler implements PostfixRequestHandler {
+public class TcpLookupHandler implements PostfixRequestHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LookupRequestHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TcpLookupHandler.class);
     public static final String MODE_NAME = "lookup";
 
     private static final String LOOKUP_PREFIX = "get ";
@@ -41,7 +41,7 @@ public class LookupRequestHandler implements PostfixRequestHandler {
     private final Endpoint endpoint;
     private final AsyncHttpClient http;
 
-    public LookupRequestHandler(Endpoint endpoint, AsyncHttpClient http) {
+    public TcpLookupHandler(Endpoint endpoint, AsyncHttpClient http) {
         this.endpoint = endpoint;
         this.http = http;
     }
