@@ -20,6 +20,9 @@ package tel.schich.postfixrestconnector;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.List;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.BoundRequestBuilder;
 import org.slf4j.Logger;
@@ -40,10 +43,12 @@ public class TcpLookupHandler implements PostfixRequestHandler {
 
     private final Endpoint endpoint;
     private final AsyncHttpClient http;
+    private final ObjectMapper mapper;
 
-    public TcpLookupHandler(Endpoint endpoint, AsyncHttpClient http) {
+    public TcpLookupHandler(Endpoint endpoint, AsyncHttpClient http, ObjectMapper mapper) {
         this.endpoint = endpoint;
         this.http = http;
+        this.mapper = mapper;
     }
 
     @Override
@@ -96,8 +101,13 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                     } else if (data.isEmpty()) {
                         return writeNotFoundResponse(ch);
                     } else {
-                        LOGGER.info("Response: {}", data);
-                        return writeSuccessfulResponse(ch, data);
+                        final List<String> responseValues = LookupResponseHelper.parseResponse(mapper, data);
+                        if (responseValues.isEmpty()) {
+                            return writeNotFoundResponse(ch);
+                        } else {
+                            LOGGER.info("Response: {}", responseValues);
+                            return writeSuccessfulResponse(ch, responseValues);
+                        }
                     }
                 } else if (statusCode == 404) {
                     return writeNotFoundResponse(ch);
@@ -122,8 +132,8 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         });
     }
 
-    public static int writeSuccessfulResponse(SocketChannel ch, String data) throws IOException {
-        return writeResponse(ch, 200, data);
+    public static int writeSuccessfulResponse(SocketChannel ch, List<String> data) throws IOException {
+        return writeResponse(ch, 200, LookupResponseHelper.encodeResponse(data));
     }
 
     public static int writeNotFoundResponse(SocketChannel ch) throws IOException {

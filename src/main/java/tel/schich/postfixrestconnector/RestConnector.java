@@ -74,7 +74,7 @@ public class RestConnector {
             final PostfixRequestHandler request;
             switch (endpoint.getMode()) {
             case TcpLookupHandler.MODE_NAME:
-                request = new TcpLookupHandler(endpoint, restClient);
+                request = new TcpLookupHandler(endpoint, restClient, mapper);
                 break;
             case PolicyRequestHandler.MODE_NAME:
                 request = new PolicyRequestHandler(endpoint, restClient, mapper);
