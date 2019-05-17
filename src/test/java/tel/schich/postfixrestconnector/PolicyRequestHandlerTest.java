@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static tel.schich.postfixrestconnector.PostfixRequestHandler.ReadResult.*;
+import static tel.schich.postfixrestconnector.TestHelper.stringBuffer;
 
 class PolicyRequestHandlerTest {
     private static final Endpoint endpoint =
@@ -83,9 +84,5 @@ class PolicyRequestHandlerTest {
         buf = stringBuffer(secondLine);
         assertEquals(BROKEN, handler.readRequest(buf, sb));
         assertEquals(firstLine, sb.toString());
-    }
-
-    static ByteBuffer stringBuffer(String s) {
-        return ByteBuffer.wrap(s.getBytes(StandardCharsets.US_ASCII));
     }
 }

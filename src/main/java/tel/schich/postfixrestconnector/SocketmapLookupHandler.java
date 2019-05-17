@@ -17,34 +17,35 @@
  */
 package tel.schich.postfixrestconnector;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-import java.util.List;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.BoundRequestBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
+import java.util.List;
+import java.util.concurrent.TimeoutException;
+
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static tel.schich.postfixrestconnector.PostfixProtocol.*;
 
-public class TcpLookupHandler implements PostfixRequestHandler {
+public class SocketmapLookupHandler implements PostfixRequestHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TcpLookupHandler.class);
-    public static final String MODE_NAME = "tcp-lookup";
+    private static final Logger LOGGER = LoggerFactory.getLogger(SocketmapLookupHandler.class);
+    public static final String MODE_NAME = "socketmap-lookup";
 
     private static final String LOOKUP_PREFIX = "get ";
-    private static final int MAXIMUM_RESPONSE_LENGTH = 4096;
-    private static final String END = "\n";
+    private static final int MAXIMUM_RESPONSE_LENGTH = 10000;
+    private static final String END = ",";
 
     private final Endpoint endpoint;
     private final AsyncHttpClient http;
     private final ObjectMapper mapper;
 
-    public TcpLookupHandler(Endpoint endpoint, AsyncHttpClient http, ObjectMapper mapper) {
+    public SocketmapLookupHandler(Endpoint endpoint, AsyncHttpClient http, ObjectMapper mapper) {
         this.endpoint = endpoint;
         this.http = http;
         this.mapper = mapper;
@@ -63,30 +64,38 @@ public class TcpLookupHandler implements PostfixRequestHandler {
 
     @Override
     public void handleReadError(SocketChannel ch) throws IOException {
-        writeError(ch, "received broken request");
+        writePermError(ch, "received broken request");
         ch.close();
     }
 
     public void handleRequest(SocketChannel ch, String rawRequest) throws IOException {
         LOGGER.info("Lookup request on endpoint {}: {}", endpoint.getName(), rawRequest);
 
-        if (rawRequest.length() <= LOOKUP_PREFIX.length() || !rawRequest.startsWith(LOOKUP_PREFIX)) {
-            writeError(ch, "Broken request!");
-            ch.close();
+        String requestData = Netstring.parseOne(rawRequest);
+
+        final int spacePos = requestData.indexOf(' ');
+        if (spacePos == -1) {
+            writeBrokenRequestErrorAndClose(ch, "invalid request format");
             return;
         }
 
-        String lookupKey = PostfixProtocol.decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());
+        final String name = PostfixProtocol.decodeURLEncodedData(requestData.substring(0, spacePos));
+        final String lookupKey = PostfixProtocol.decodeURLEncodedData(requestData.substring(spacePos + 1));
 
         BoundRequestBuilder prepareRequest = http.prepareGet(endpoint.getTarget())
                 .setHeader("X-Auth-Token", endpoint.getAuthToken())
                 .setRequestTimeout(endpoint.getRequestTimeout())
+                .addQueryParam("name", name)
                 .addQueryParam("key", lookupKey);
 
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
                 if (err != null) {
-                    writeError(ch, err.getMessage());
+                    if (err instanceof TimeoutException) {
+                        writeTimeoutError(ch, "REST request timed out: " + err.getMessage());
+                    } else {
+                        writeTempError(ch, err.getMessage());
+                    }
                     return null;
                 }
 
@@ -96,7 +105,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                     String data = response.getResponseBody();
                     if (data == null) {
                         LOGGER.warn("No result!");
-                        return writeError(ch, "REST result was broken!");
+                        return writeTempError(ch, "REST result was broken!");
                     } else if (data.isEmpty()) {
                         return writeNotFoundResponse(ch);
                     } else {
@@ -105,24 +114,25 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                             return writeNotFoundResponse(ch);
                         } else {
                             LOGGER.info("Response: {}", responseValues);
-                            return writeSuccessfulResponse(ch, responseValues);
+
+                            return writeOkResponse(ch, responseValues);
                         }
                     }
                 } else if (statusCode == 404) {
                     return writeNotFoundResponse(ch);
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                    writeError(ch, "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
+                    writePermError(ch, "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
                 } else if (statusCode >= 500 && statusCode < 600) {
                     // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
-                    writeError(ch, "REST server had an internal error: " + statusCode);
+                    writeTempError(ch, "REST server had an internal error: " + statusCode);
                 } else {
-                    writeError(ch, "REST server responded with an unspecified code: " + statusCode);
+                    writeTempError(ch, "REST server responded with an unspecified code: " + statusCode);
                 }
             } catch (IOException e) {
                 LOGGER.error("Failed to write response!", e);
                 try {
-                    writeError(ch, "REST connector encountered a problem!");
+                    writeTempError(ch, "REST connector encountered a problem!");
                 } catch (IOException ex) {
                     LOGGER.error("While recovering from an error failed to write response!", e);
                 }
@@ -131,24 +141,37 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         });
     }
 
-    public static int writeSuccessfulResponse(SocketChannel ch, List<String> data) throws IOException {
-        return writeResponse(ch, 200, LookupResponseHelper.encodeResponse(data));
+    public static int writeOkResponse(SocketChannel ch, List<String> data) throws IOException {
+        return writeResponse(ch, "OK " + LookupResponseHelper.encodeResponse(data));
     }
 
     public static int writeNotFoundResponse(SocketChannel ch) throws IOException {
-        return writeResponse(ch, 500, "key not found");
+        return writeResponse(ch, "");
     }
 
-    public static int writeError(SocketChannel ch, String message) throws IOException {
-        return writeResponse(ch, 400, message);
+    public static void writeBrokenRequestErrorAndClose(SocketChannel ch, String reason) throws IOException {
+        writePermError(ch, "Broken request! (" + reason + ")");
+        ch.close();
     }
 
-    public static int writeResponse(SocketChannel ch, int code, String data) throws IOException {
-        byte[] payload = (String.valueOf(code) + ' ' + encodeResponseData(data) + END).getBytes(US_ASCII);
-        if (payload.length > MAXIMUM_RESPONSE_LENGTH)
+    public static int writeTimeoutError(SocketChannel ch, String message) throws IOException {
+        return writeResponse(ch, "TIMEOUT " + message);
+    }
+
+    public static int writeTempError(SocketChannel ch, String message) throws IOException {
+        return writeResponse(ch, "TEMP " + message);
+    }
+
+    public static int writePermError(SocketChannel ch, String message) throws IOException {
+        return writeResponse(ch, "PERM " + message);
+    }
+
+    public static int writeResponse(SocketChannel ch, String data) throws IOException {
+        if (data.length() > MAXIMUM_RESPONSE_LENGTH)
         {
             throw new IOException("response to long");
         }
+        byte[] payload = Netstring.compileOne(data).getBytes(US_ASCII);
         return ch.write(ByteBuffer.wrap(payload));
     }
 

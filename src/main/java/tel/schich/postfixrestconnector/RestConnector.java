@@ -76,6 +76,9 @@ public class RestConnector {
             case TcpLookupHandler.MODE_NAME:
                 request = new TcpLookupHandler(endpoint, restClient, mapper);
                 break;
+            case SocketmapLookupHandler.MODE_NAME:
+                request = new SocketmapLookupHandler(endpoint, restClient, mapper);
+                break;
             case PolicyRequestHandler.MODE_NAME:
                 request = new PolicyRequestHandler(endpoint, restClient, mapper);
                 break;

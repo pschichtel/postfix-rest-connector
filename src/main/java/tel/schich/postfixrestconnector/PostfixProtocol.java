@@ -28,15 +28,20 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 public class PostfixProtocol {
 
     public static String readAsciiString(ByteBuffer buf) {
-        if (!buf.hasRemaining()) {
+        return readAsciiString(buf, -1);
+    }
+
+    public static String readAsciiString(ByteBuffer buf, int max) {
+        if (!buf.hasRemaining() || max == 0) {
             return "";
         }
+        final int bytesToRead = max == -1 ? buf.remaining() : max;
         if (buf.isDirect()) {
-            byte[] jbuf = new byte[buf.remaining()];
+            byte[] jbuf = new byte[bytesToRead];
             buf.get(jbuf);
             return new String(jbuf, US_ASCII);
         } else {
-            return new String(buf.array(), buf.position(), buf.remaining(), US_ASCII);
+            return new String(buf.array(), buf.position(), bytesToRead, US_ASCII);
         }
     }
 
@@ -61,5 +66,22 @@ public class PostfixProtocol {
 
         out.append(input);
         return ReadResult.COMPLETE;
+    }
+
+    public static String encodeResponseData(String data) {
+        StringBuilder out = new StringBuilder();
+        for (char c : data.toCharArray()) {
+            if (c <= 32) {
+                out.append('%');
+                String hex = Integer.toHexString(c);
+                if (hex.length() == 1) {
+                    out.append('0');
+                }
+                out.append(hex);
+            } else {
+                out.append(c);
+            }
+        }
+        return out.toString();
     }
 }
