@@ -105,7 +105,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                             return writeNotFoundResponse(ch);
                         } else {
                             LOGGER.info("Response: {}", responseValues);
-                            return writeSuccessfulResponse(ch, responseValues);
+                            return writeSuccessfulResponse(ch, responseValues, endpoint.getListSeparator());
                         }
                     }
                 } else if (statusCode == 404) {
@@ -131,8 +131,8 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         });
     }
 
-    public static int writeSuccessfulResponse(SocketChannel ch, List<String> data) throws IOException {
-        return writeResponse(ch, 200, LookupResponseHelper.encodeResponse(data));
+    public static int writeSuccessfulResponse(SocketChannel ch, List<String> data, String separator) throws IOException {
+        return writeResponse(ch, 200, LookupResponseHelper.encodeResponse(data, separator));
     }
 
     public static int writeNotFoundResponse(SocketChannel ch) throws IOException {

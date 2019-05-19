@@ -115,7 +115,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                         } else {
                             LOGGER.info("Response: {}", responseValues);
 
-                            return writeOkResponse(ch, responseValues);
+                            return writeOkResponse(ch, responseValues, endpoint.getListSeparator());
                         }
                     }
                 } else if (statusCode == 404) {
@@ -141,8 +141,8 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         });
     }
 
-    public static int writeOkResponse(SocketChannel ch, List<String> data) throws IOException {
-        return writeResponse(ch, "OK " + LookupResponseHelper.encodeResponse(data));
+    public static int writeOkResponse(SocketChannel ch, List<String> data, String separator) throws IOException {
+        return writeResponse(ch, "OK " + LookupResponseHelper.encodeResponse(data, separator));
     }
 
     public static int writeNotFoundResponse(SocketChannel ch) throws IOException {

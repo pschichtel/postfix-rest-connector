@@ -18,19 +18,19 @@
 package tel.schich.postfixrestconnector;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import org.asynchttpclient.Dsl;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static tel.schich.postfixrestconnector.LookupResponseHelper.DEFAULT_RESPONSE_VALUE_SEPARATOR;
 import static tel.schich.postfixrestconnector.PostfixRequestHandler.ReadResult.*;
 import static tel.schich.postfixrestconnector.TestHelper.stringBuffer;
 
 class PolicyRequestHandlerTest {
     private static final Endpoint endpoint =
-            new Endpoint("test-policy", "http://localhost", "0.0.0.0", 9000, "test123", 1, "policy");
+            new Endpoint("test-policy", "http://localhost", "0.0.0.0", 9000, "test123", 1, "policy", DEFAULT_RESPONSE_VALUE_SEPARATOR);
     private static final PolicyRequestHandler handler =
             new PolicyRequestHandler(endpoint, Dsl.asyncHttpClient(), new ObjectMapper());
     @Test

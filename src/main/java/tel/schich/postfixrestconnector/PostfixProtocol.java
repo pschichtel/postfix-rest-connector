@@ -27,6 +27,8 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 
 public class PostfixProtocol {
 
+    private PostfixProtocol() {}
+
     public static String readAsciiString(ByteBuffer buf) {
         return readAsciiString(buf, -1);
     }

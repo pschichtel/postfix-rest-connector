@@ -31,12 +31,13 @@ public final class Endpoint {
     private final String authToken;
     private final int requestTimeout;
     private final String mode;
+    private final String listSeparator;
 
     @JsonCreator
     public Endpoint(@JsonProperty("name") String name, @JsonProperty("target") String target,
             @JsonProperty("bind-address") String bindAddress, @JsonProperty("bind-port") int bindPort,
             @JsonProperty("auth-token") String authToken, @JsonProperty("request-timeout") int requestTimeout,
-            @JsonProperty("mode") String mode) {
+            @JsonProperty("mode") String mode, @JsonProperty("list-separator") String listSeparator) {
         Objects.requireNonNull(name, "name is required!");
         Objects.requireNonNull(target, "target is required!");
         Objects.requireNonNull(authToken, "auth token is required!");
@@ -53,6 +54,11 @@ public final class Endpoint {
         this.authToken = authToken;
         this.requestTimeout = requestTimeout;
         this.mode = mode.toLowerCase();
+        if (listSeparator == null) {
+            this.listSeparator = LookupResponseHelper.DEFAULT_RESPONSE_VALUE_SEPARATOR;
+        } else {
+            this.listSeparator = listSeparator;
+        }
     }
 
     public String getTarget() {
@@ -85,5 +91,9 @@ public final class Endpoint {
 
     public String getMode() {
         return mode;
+    }
+
+    public String getListSeparator() {
+        return listSeparator;
     }
 }
