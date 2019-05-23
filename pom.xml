@@ -235,6 +235,9 @@
                             <tag>${project.version}</tag>
                         </tags>
                     </to>
+                    <container>
+                        <user>connector</user>
+                    </container>
                 </configuration>
                 <executions>
                     <execution>
