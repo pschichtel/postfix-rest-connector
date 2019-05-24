@@ -236,7 +236,7 @@
                         </tags>
                     </to>
                     <container>
-                        <user>connector</user>
+                        <user>nobody</user>
                     </container>
                 </configuration>
                 <executions>
