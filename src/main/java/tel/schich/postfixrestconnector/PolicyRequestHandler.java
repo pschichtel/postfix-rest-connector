@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.BoundRequestBuilder;
@@ -55,7 +56,9 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
     }
 
     protected void handleRequest(SocketChannel ch, List<Param> params) {
-        LOGGER.info("Policy request on endpoint {}: {}", endpoint.getName(), params);
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Policy request on endpoint {}: {}", endpoint.getName(), paramsToString(params));
+        }
 
         BoundRequestBuilder prepareRequest = http.preparePost(endpoint.getTarget())
                 .setHeader("X-Auth-Token", endpoint.getAuthToken())
@@ -114,6 +117,20 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         byte[] payload = ("action=" + action + LINE_END + LINE_END)
                 .getBytes(StandardCharsets.US_ASCII);
         return IOUtil.writeAll(ch, payload);
+    }
+
+    private static String paramsToString(List<Param> params) {
+        StringBuilder s = new StringBuilder();
+        Iterator<Param> it = params.iterator();
+        if (it.hasNext()) {
+            Param p = it.next();
+            s.append(p.getName()).append('=').append(p.getValue());
+            while (it.hasNext()) {
+                p = it.next();
+                s.append(", ").append(p.getName()).append('=').append(p.getValue());
+            }
+        }
+        return s.toString();
     }
 
     private class PolicyConnectionState implements ConnectionState {
