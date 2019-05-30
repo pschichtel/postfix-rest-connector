@@ -44,7 +44,7 @@ class SocketmapLookupHandlerTest {
         final SocketChannel sc = new MockSocketChannel();
         ConnectionState state = HANDLER.createState();
         assertEquals(s.length(), state.read(sc, b));
-        assertEquals(s, HANDLER.getData());
+        assertEquals(d, HANDLER.getData());
     }
 
 }
