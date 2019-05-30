@@ -43,9 +43,11 @@ import static org.asynchttpclient.Dsl.asyncHttpClient;
 
 public class RestConnector implements Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(RestConnector.class);
+
     private static final int READ_BUFFER_SIZE = 2048;
 
     private volatile Selector selector;
+
     private volatile boolean keepPolling = true;
 
     public void start(SelectorProvider provider, Configuration config) throws IOException {
@@ -64,7 +66,6 @@ public class RestConnector implements Closeable {
         selector = provider.openSelector();
         final ByteBuffer buffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
         final AsyncHttpClient restClient = getConfiguredClient(config);
-
 
         for (Endpoint endpoint : config.getEndpoints()) {
             final ServerSocketChannel serverChannel = provider.openServerSocketChannel();
@@ -150,7 +151,7 @@ public class RestConnector implements Closeable {
         this.stop();
     }
 
-    private static void readChannel(SocketChannel ch, ByteBuffer buffer,  ConnectionState state) throws IOException {
+    private static void readChannel(SocketChannel ch, ByteBuffer buffer, ConnectionState state) throws IOException {
         buffer.clear();
         int bytesRead;
         try {

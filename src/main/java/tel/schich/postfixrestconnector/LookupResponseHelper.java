@@ -25,10 +25,13 @@ import java.util.Iterator;
 import java.util.List;
 
 public class LookupResponseHelper {
-    private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<List<String>>() {};
+    private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<List<String>>() {
+    };
+
     public static final String DEFAULT_RESPONSE_VALUE_SEPARATOR = ",";
 
-    private LookupResponseHelper() {}
+    private LookupResponseHelper() {
+    }
 
     public static List<String> parseResponse(ObjectMapper mapper, String response) throws IOException {
         return mapper.readValue(response, STRING_LIST_REF);

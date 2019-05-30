@@ -33,11 +33,13 @@ import org.slf4j.LoggerFactory;
 public class PolicyRequestHandler implements PostfixRequestHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PolicyRequestHandler.class);
+
     public static final String MODE_NAME = "policy";
 
     private static final char LINE_END = '\n';
 
     private final Endpoint endpoint;
+
     private final AsyncHttpClient http;
 
     public PolicyRequestHandler(Endpoint endpoint, AsyncHttpClient http) {
@@ -63,8 +65,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         BoundRequestBuilder prepareRequest = http.preparePost(endpoint.getTarget())
                 .setHeader("X-Auth-Token", endpoint.getAuthToken())
                 .addHeader("Content-Type", "application/x-www-form-urlencoded")
-                .setRequestTimeout(endpoint.getRequestTimeout())
-                .setFormParams(params);
+                .setRequestTimeout(endpoint.getRequestTimeout()).setFormParams(params);
 
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
@@ -166,7 +167,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                         pendingRead.setLength(0);
                         state = READ_VALUE;
                     } else {
-                        pendingRead.append((char)c);
+                        pendingRead.append((char) c);
                     }
                     break;
                 case READ_VALUE:
@@ -175,7 +176,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                         pendingRead.setLength(0);
                         state = READ_NAME;
                     } else {
-                        pendingRead.append((char)c);
+                        pendingRead.append((char) c);
                     }
                     break;
                 default:

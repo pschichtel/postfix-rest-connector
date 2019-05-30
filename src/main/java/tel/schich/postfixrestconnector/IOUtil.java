@@ -23,7 +23,8 @@ import java.nio.channels.WritableByteChannel;
 
 class IOUtil {
 
-    private IOUtil() {}
+    private IOUtil() {
+    }
 
     static int writeAll(WritableByteChannel ch, byte[] payload) throws IOException {
         ByteBuffer buf = ByteBuffer.wrap(payload);

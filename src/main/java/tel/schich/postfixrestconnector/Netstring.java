@@ -23,7 +23,8 @@ import java.util.List;
 
 public class Netstring {
 
-    private Netstring() {}
+    private Netstring() {
+    }
 
     public static final String EMPTY = "0:,";
 
@@ -51,7 +52,8 @@ public class Netstring {
                 runLength = Integer.parseInt(s.substring(offset, colonPos));
                 commaPos = colonPos + 1 + runLength;
                 if (s.charAt(commaPos) != ',') {
-                    throw new IOException("Expected ',' at " + offset + ", but got '" + s.charAt(commaPos) + "' after data!");
+                    throw new IOException(
+                            "Expected ',' at " + offset + ", but got '" + s.charAt(commaPos) + "' after data!");
                 }
                 out.add(s.substring(colonPos + 1, commaPos));
                 offset = commaPos + 1;

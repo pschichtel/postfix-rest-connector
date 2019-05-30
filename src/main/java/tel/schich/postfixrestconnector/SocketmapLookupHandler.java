@@ -34,13 +34,17 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 public class SocketmapLookupHandler implements PostfixRequestHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SocketmapLookupHandler.class);
+
     public static final String MODE_NAME = "socketmap-lookup";
 
     private static final int MAXIMUM_RESPONSE_LENGTH = 10000;
+
     private static final char END = ',';
 
     private final Endpoint endpoint;
+
     private final AsyncHttpClient http;
+
     private final ObjectMapper mapper;
 
     public SocketmapLookupHandler(Endpoint endpoint, AsyncHttpClient http, ObjectMapper mapper) {
@@ -58,6 +62,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
     public ConnectionState createState() {
         return new SocketMapConnectionState();
     }
+
     protected void handleRequest(SocketChannel ch, String requestData) throws IOException {
         LOGGER.info("Lookup request on endpoint {}: {}", endpoint.getName(), requestData);
 
@@ -71,10 +76,8 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         final String lookupKey = PostfixProtocol.decodeURLEncodedData(requestData.substring(spacePos + 1));
 
         BoundRequestBuilder prepareRequest = http.prepareGet(endpoint.getTarget())
-                .setHeader("X-Auth-Token", endpoint.getAuthToken())
-                .setRequestTimeout(endpoint.getRequestTimeout())
-                .addQueryParam("name", name)
-                .addQueryParam("key", lookupKey);
+                .setHeader("X-Auth-Token", endpoint.getAuthToken()).setRequestTimeout(endpoint.getRequestTimeout())
+                .addQueryParam("name", name).addQueryParam("key", lookupKey);
 
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
@@ -110,7 +113,8 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     return writeNotFoundResponse(ch);
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                    writePermError(ch, "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
+                    writePermError(ch,
+                            "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
                 } else if (statusCode >= 500 && statusCode < 600) {
                     // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
                     writeTempError(ch, "REST server had an internal error: " + statusCode);
@@ -155,8 +159,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
     }
 
     public static int writeResponse(SocketChannel ch, String data) throws IOException {
-        if (data.length() > MAXIMUM_RESPONSE_LENGTH)
-        {
+        if (data.length() > MAXIMUM_RESPONSE_LENGTH) {
             throw new IOException("response to long");
         }
         String text = Netstring.compileOne(data);
@@ -194,14 +197,14 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     } else {
                         int digit = c - '0';
                         if (digit < 0 || digit > 9) {
-                            writeBrokenRequestErrorAndClose(ch, "Expected a digit, but got: " + (char)c);
+                            writeBrokenRequestErrorAndClose(ch, "Expected a digit, but got: " + (char) c);
                         }
                         length = length * 10 + digit;
                     }
                     break;
                 case READ_VALUE:
                     if (pendingRead.length() < length) {
-                        pendingRead.append((char)c);
+                        pendingRead.append((char) c);
                     }
 
                     if (pendingRead.length() >= length) {
@@ -214,7 +217,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                         length = 0;
                         handleRequest(ch, pendingRead.toString());
                     } else {
-                        writeBrokenRequestErrorAndClose(ch, "Expected comma, but got: " + (char)c);
+                        writeBrokenRequestErrorAndClose(ch, "Expected comma, but got: " + (char) c);
                     }
                     break;
                 default:

@@ -24,10 +24,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Configuration {
     private final String userAgent;
+
     private final List<Endpoint> endpoints;
 
     @JsonCreator
-    public Configuration(@JsonProperty("user-agent") String userAgent, @JsonProperty("endpoints") List<Endpoint> endpoints) {
+    public Configuration(@JsonProperty("user-agent") String userAgent,
+            @JsonProperty("endpoints") List<Endpoint> endpoints) {
         this.userAgent = userAgent;
         this.endpoints = Collections.unmodifiableList(endpoints);
     }

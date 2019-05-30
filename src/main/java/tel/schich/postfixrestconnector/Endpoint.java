@@ -25,12 +25,19 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public final class Endpoint {
     private final String name;
+
     private final String target;
+
     private final String bindAddress;
+
     private final int bindPort;
+
     private final String authToken;
+
     private final int requestTimeout;
+
     private final String mode;
+
     private final String listSeparator;
 
     @JsonCreator

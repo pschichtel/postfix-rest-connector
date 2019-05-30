@@ -34,14 +34,19 @@ import static tel.schich.postfixrestconnector.PostfixProtocol.*;
 public class TcpLookupHandler implements PostfixRequestHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TcpLookupHandler.class);
+
     public static final String MODE_NAME = "tcp-lookup";
 
     private static final String LOOKUP_PREFIX = "get ";
+
     private static final int MAXIMUM_RESPONSE_LENGTH = 4096;
+
     private static final char END = '\n';
 
     private final Endpoint endpoint;
+
     private final AsyncHttpClient http;
+
     private final ObjectMapper mapper;
 
     public TcpLookupHandler(Endpoint endpoint, AsyncHttpClient http, ObjectMapper mapper) {
@@ -72,8 +77,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         String lookupKey = PostfixProtocol.decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());
 
         BoundRequestBuilder prepareRequest = http.prepareGet(endpoint.getTarget())
-                .setHeader("X-Auth-Token", endpoint.getAuthToken())
-                .setRequestTimeout(endpoint.getRequestTimeout())
+                .setHeader("X-Auth-Token", endpoint.getAuthToken()).setRequestTimeout(endpoint.getRequestTimeout())
                 .addQueryParam("key", lookupKey);
 
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
@@ -105,7 +109,8 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                     return writeNotFoundResponse(ch);
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                    writeError(ch, "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
+                    writeError(ch,
+                            "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
                 } else if (statusCode >= 500 && statusCode < 600) {
                     // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
                     writeError(ch, "REST server had an internal error: " + statusCode);
@@ -124,7 +129,8 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         });
     }
 
-    public static int writeSuccessfulResponse(SocketChannel ch, List<String> data, String separator) throws IOException {
+    public static int writeSuccessfulResponse(SocketChannel ch, List<String> data, String separator)
+            throws IOException {
         return writeResponse(ch, 200, LookupResponseHelper.encodeResponse(data, separator));
     }
 
@@ -139,8 +145,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
     public static int writeResponse(SocketChannel ch, int code, String data) throws IOException {
         String text = String.valueOf(code) + ' ' + encodeResponseData(data) + END;
         byte[] payload = text.getBytes(US_ASCII);
-        if (payload.length > MAXIMUM_RESPONSE_LENGTH)
-        {
+        if (payload.length > MAXIMUM_RESPONSE_LENGTH) {
             throw new IOException("response to long");
         }
         LOGGER.info("Response: {}", text);
@@ -160,7 +165,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                     handleRequest(ch, pendingRead.toString());
                     pendingRead.setLength(0);
                 } else {
-                    pendingRead.append((char)c);
+                    pendingRead.append((char) c);
                 }
             }
             return bytesRead;
