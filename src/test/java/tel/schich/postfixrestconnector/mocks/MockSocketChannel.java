@@ -96,7 +96,9 @@ public class MockSocketChannel extends SocketChannel {
 
     @Override
     public int write(ByteBuffer src) throws IOException {
-        return 0;
+        int remaining = src.remaining();
+        src.position(src.limit());
+        return remaining;
     }
 
     @Override

@@ -160,7 +160,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
             throw new IOException("response to long");
         }
         byte[] payload = Netstring.compileOne(data).getBytes(US_ASCII);
-        return ch.write(ByteBuffer.wrap(payload));
+        return IOUtil.writeAll(ch, payload);
     }
 
     private class SocketMapConnectionState implements ConnectionState {

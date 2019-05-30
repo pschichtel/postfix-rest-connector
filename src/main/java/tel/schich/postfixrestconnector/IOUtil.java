@@ -15,33 +15,22 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector.mocks;
+package tel.schich.postfixrestconnector;
 
-import java.nio.channels.SocketChannel;
-import java.util.List;
-import org.asynchttpclient.Dsl;
-import org.asynchttpclient.Param;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.WritableByteChannel;
 
-import tel.schich.postfixrestconnector.Endpoint;
-import tel.schich.postfixrestconnector.PolicyRequestHandler;
+class IOUtil {
 
-public class MockPolicyRequestHandler extends PolicyRequestHandler {
-    private List<Param> data;
+    private IOUtil() {}
 
-    public MockPolicyRequestHandler(Endpoint endpoint) {
-        super(endpoint, Dsl.asyncHttpClient());
+    static int writeAll(WritableByteChannel ch, byte[] payload) throws IOException {
+        ByteBuffer buf = ByteBuffer.wrap(payload);
+        int bytesWritten = 0;
+        while (buf.hasRemaining()) {
+            bytesWritten += ch.write(buf);
+        }
+        return bytesWritten;
     }
-
-    @Override
-    protected void handleRequest(SocketChannel ch, List<Param> params) {
-        data = params;
-        super.handleRequest(ch, params);
-    }
-
-    public List<Param> getData() {
-        List<Param> copy = this.data;
-        this.data = null;
-        return copy;
-    }
-
 }

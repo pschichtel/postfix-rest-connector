@@ -113,7 +113,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
     public static int writeActionResponse(SocketChannel ch, String action) throws IOException {
         byte[] payload = ("action=" + action + LINE_END + LINE_END)
                 .getBytes(StandardCharsets.US_ASCII);
-        return ch.write(ByteBuffer.wrap(payload));
+        return IOUtil.writeAll(ch, payload);
     }
 
     private class PolicyConnectionState implements ConnectionState {

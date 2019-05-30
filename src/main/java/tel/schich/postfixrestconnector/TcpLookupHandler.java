@@ -142,7 +142,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         {
             throw new IOException("response to long");
         }
-        return ch.write(ByteBuffer.wrap(payload));
+        return IOUtil.writeAll(ch, payload);
     }
 
     private class TcpConnectionState implements ConnectionState {
