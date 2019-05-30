@@ -37,7 +37,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
     public static final String MODE_NAME = "socketmap-lookup";
 
     private static final int MAXIMUM_RESPONSE_LENGTH = 10000;
-    private static final String END = ",";
+    private static final char END = ',';
 
     private final Endpoint endpoint;
     private final AsyncHttpClient http;
@@ -58,13 +58,6 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
     public ConnectionState createState() {
         return new SocketMapConnectionState();
     }
-
-    @Override
-    public void handleReadError(SocketChannel ch) throws IOException {
-        writePermError(ch, "received broken request");
-        ch.close();
-    }
-
     protected void handleRequest(SocketChannel ch, String requestData) throws IOException {
         LOGGER.info("Lookup request on endpoint {}: {}", endpoint.getName(), requestData);
 
@@ -214,7 +207,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     }
                     break;
                 case READ_END:
-                    if (c == ',') {
+                    if (c == END) {
                         state = READ_LENGTH;
                         length = 0;
                         handleRequest(ch, pendingRead.toString());

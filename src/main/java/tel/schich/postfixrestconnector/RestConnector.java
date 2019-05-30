@@ -81,7 +81,7 @@ public class RestConnector implements Closeable {
                 request = new SocketmapLookupHandler(endpoint, restClient, mapper);
                 break;
             case PolicyRequestHandler.MODE_NAME:
-                request = new PolicyRequestHandler(endpoint, restClient, mapper);
+                request = new PolicyRequestHandler(endpoint, restClient);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown mode " + endpoint.getMode() + "!");

@@ -19,7 +19,6 @@ package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channel;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 
@@ -39,7 +38,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
 
     private static final String LOOKUP_PREFIX = "get ";
     private static final int MAXIMUM_RESPONSE_LENGTH = 4096;
-    private static final String END = "\n";
+    private static final char END = '\n';
 
     private final Endpoint endpoint;
     private final AsyncHttpClient http;
@@ -59,12 +58,6 @@ public class TcpLookupHandler implements PostfixRequestHandler {
     @Override
     public ConnectionState createState() {
         return new TcpConnectionState();
-    }
-
-    @Override
-    public void handleReadError(SocketChannel ch) throws IOException {
-        writeError(ch, "received broken request");
-        ch.close();
     }
 
     private void handleRequest(SocketChannel ch, String rawRequest) throws IOException {
@@ -161,7 +154,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
             while (buffer.remaining() > 0) {
                 final byte c = buffer.get();
                 bytesRead++;
-                if (c == '\n') {
+                if (c == END) {
                     handleRequest(ch, pendingRead.toString());
                     pendingRead.setLength(0);
                 } else {

@@ -17,13 +17,8 @@
  */
 package tel.schich.postfixrestconnector;
 
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
-
 public interface PostfixRequestHandler {
     Endpoint getEndpoint();
 
     ConnectionState createState();
-
-    void handleReadError(SocketChannel ch) throws IOException;
 }

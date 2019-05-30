@@ -28,22 +28,20 @@ import org.asynchttpclient.BoundRequestBuilder;
 import org.asynchttpclient.Param;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class PolicyRequestHandler implements PostfixRequestHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PolicyRequestHandler.class);
     public static final String MODE_NAME = "policy";
-    private static final String END = "\n\n";
+
+    private static final char LINE_END = '\n';
 
     private final Endpoint endpoint;
     private final AsyncHttpClient http;
-    private final ObjectMapper json;
 
-    public PolicyRequestHandler(Endpoint endpoint, AsyncHttpClient http, ObjectMapper json) {
+    public PolicyRequestHandler(Endpoint endpoint, AsyncHttpClient http) {
         this.endpoint = endpoint;
         this.http = http;
-        this.json = json;
     }
 
     @Override
@@ -54,12 +52,6 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
     @Override
     public ConnectionState createState() {
         return new PolicyConnectionState();
-    }
-
-    @Override
-    public void handleReadError(SocketChannel ch) throws IOException {
-        writeTemporaryError(ch, "received broken request");
-        ch.close();
     }
 
     protected void handleRequest(SocketChannel ch, List<Param> params) {
@@ -119,7 +111,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
     }
 
     public static int writeActionResponse(SocketChannel ch, String action) throws IOException {
-        byte[] payload = ("action=" + action + "\n\n")
+        byte[] payload = ("action=" + action + LINE_END + LINE_END)
                 .getBytes(StandardCharsets.US_ASCII);
         return ch.write(ByteBuffer.wrap(payload));
     }
@@ -147,7 +139,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
 
                 switch (state) {
                 case READ_NAME:
-                    if (c == '\n') {
+                    if (c == LINE_END) {
                         handleRequest(ch, pendingRequest);
                         pendingRequest = new ArrayList<>();
                     } else if (c == '=') {
@@ -159,7 +151,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                     }
                     break;
                 case READ_VALUE:
-                    if (c == '\n') {
+                    if (c == LINE_END) {
                         pendingRequest.add(new Param(pendingPairName, pendingRead.toString()));
                         pendingRead.setLength(0);
                         state = READ_NAME;
