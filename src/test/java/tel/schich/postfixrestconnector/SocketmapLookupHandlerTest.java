@@ -38,8 +38,8 @@ class SocketmapLookupHandlerTest {
 
     @Test
     public void testRequest() throws IOException {
-        final String d = "0123456789";
-        final String s = "10:" + d + ",";
+        final String d = "test 0123456789";
+        final String s = d.length() + ":" + d + ",";
         final ByteBuffer b = stringBuffer(s);
         final SocketChannel sc = new MockSocketChannel();
         ConnectionState state = HANDLER.createState();
