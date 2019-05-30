@@ -17,6 +17,7 @@
  */
 package tel.schich.postfixrestconnector;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -43,7 +44,7 @@ import static java.nio.channels.SelectionKey.OP_ACCEPT;
 import static java.nio.channels.SelectionKey.OP_READ;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
 
-public class RestConnector {
+public class RestConnector implements Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(RestConnector.class);
     private static final int READ_BUFFER_SIZE = 2048;
 
@@ -91,10 +92,9 @@ public class RestConnector {
             serverChannel.register(selector, OP_ACCEPT, request);
 
             LOGGER.info("Bound endpoint {} to address: {}", endpoint.getName(), serverChannel.getLocalAddress());
-
         }
 
-        Map<Channel, StringBuilder> pendingRequests = new HashMap<>();
+        Map<Channel, ConnectionState> connectionState = new HashMap<>();
 
         while (keepPolling) {
             if (selector.select() <= 0) {
@@ -113,9 +113,10 @@ public class RestConnector {
                     ServerSocketChannel ch = (ServerSocketChannel) channel;
                     SocketChannel clientChannel = ch.accept();
                     configureChannel(clientChannel);
-                    PostfixRequestHandler request = (PostfixRequestHandler) key.attachment();
-                    Endpoint endpoint = request.getEndpoint();
-                    clientChannel.register(selector, OP_READ, request);
+                    PostfixRequestHandler handler = (PostfixRequestHandler) key.attachment();
+                    Endpoint endpoint = handler.getEndpoint();
+                    clientChannel.register(selector, OP_READ, handler);
+                    connectionState.put(clientChannel, handler.createState());
                     SocketAddress remoteAddress = clientChannel.getRemoteAddress();
                     LOGGER.info("Incoming connection from {} on endpoint {}", remoteAddress, endpoint.getName());
                     continue;
@@ -127,14 +128,15 @@ public class RestConnector {
 
                 if (!channel.isOpen()) {
                     key.cancel();
-                    pendingRequests.remove(channel);
+                    connectionState.remove(channel);
                     continue;
                 }
 
                 if (key.isReadable() && channel instanceof SocketChannel) {
                     SocketChannel ch = (SocketChannel) channel;
                     PostfixRequestHandler handler = (PostfixRequestHandler) key.attachment();
-                    readChannel(ch, buffer, handler, pendingRequests);
+                    ConnectionState state = connectionState.get(ch);
+                    readChannel(ch, buffer, state);
                 }
             }
         }
@@ -147,7 +149,12 @@ public class RestConnector {
         }
     }
 
-    private static void readChannel(SocketChannel ch, ByteBuffer buffer, PostfixRequestHandler handler,  Map<Channel, StringBuilder> pendingRequests) throws IOException {
+    @Override
+    public void close() {
+        this.stop();
+    }
+
+    private static void readChannel(SocketChannel ch, ByteBuffer buffer,  ConnectionState state) throws IOException {
         buffer.clear();
         int bytesRead;
         try {
@@ -162,18 +169,7 @@ public class RestConnector {
         }
 
         buffer.flip();
-        StringBuilder builder = pendingRequests.computeIfAbsent(ch, c -> new StringBuilder());
-
-        switch (handler.readRequest(buffer, builder)) {
-        case BROKEN:
-            handler.handleReadError(ch);
-            return;
-        case PENDING:
-            return;
-        case COMPLETE:
-            pendingRequests.remove(ch);
-            handler.handleRequest(ch, builder.toString());
-        }
+        state.read(ch, buffer);
     }
 
     private static void configureChannel(SelectableChannel ch) throws IOException {

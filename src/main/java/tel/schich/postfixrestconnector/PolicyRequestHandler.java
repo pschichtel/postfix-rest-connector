@@ -30,9 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static tel.schich.postfixrestconnector.PostfixProtocol.readAsciiString;
-import static tel.schich.postfixrestconnector.PostfixProtocol.readToEnd;
-
 public class PolicyRequestHandler implements PostfixRequestHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PolicyRequestHandler.class);
@@ -54,19 +51,9 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         return endpoint;
     }
 
-    public ReadResult readRequest(ByteBuffer buf, StringBuilder out) {
-        String s = readAsciiString(buf);
-        boolean lastIsLineBreak = out.length() > 0 && out.charAt(out.length() - 1) == '\n';
-        boolean firstIsLineBreak = s.charAt(0) == '\n';
-        if (lastIsLineBreak && firstIsLineBreak) {
-            if (s.length() == 1) {
-                out.append(s);
-                return ReadResult.COMPLETE;
-            } else {
-                return ReadResult.BROKEN;
-            }
-        }
-        return readToEnd(out, s, END);
+    @Override
+    public ConnectionState createState() {
+        return new PolicyConnectionState();
     }
 
     @Override
@@ -75,16 +62,8 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         ch.close();
     }
 
-    @Override
-    public void handleRequest(SocketChannel ch, String rawRequest) throws IOException {
-        LOGGER.info("Policy request on endpoint {}: {}", endpoint.getName(), rawRequest);
-
-        List<Param> params = parseRequest(rawRequest);
-        if (params == null || params.isEmpty()) {
-            writePermanentError(ch, "broken request");
-            ch.close();
-            return;
-        }
+    protected void handleRequest(SocketChannel ch, List<Param> params) {
+        LOGGER.info("Policy request on endpoint {}: {}", endpoint.getName(), params);
 
         BoundRequestBuilder prepareRequest = http.preparePost(endpoint.getTarget())
                 .setHeader("X-Auth-Token", endpoint.getAuthToken())
@@ -131,27 +110,6 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         });
     }
 
-    private static List<Param> parseRequest(String request) {
-        List<Param> out = new ArrayList<>();
-
-        int offset = 0;
-        int equalIndex;
-        int lineBreakIndex;
-        while (request.charAt(offset) != '\n') {
-            lineBreakIndex = request.indexOf('\n', offset);
-            equalIndex = request.indexOf('=', offset);
-            if (equalIndex == -1 || equalIndex > lineBreakIndex) {
-                return null;
-            }
-            out.add(new Param(request.substring(offset, equalIndex),
-                    request.substring(equalIndex + 1, lineBreakIndex)));
-            offset = lineBreakIndex + 1;
-        }
-
-        return out;
-    }
-
-
     private static int writePermanentError(SocketChannel ch, String message) throws IOException {
         return writeActionResponse(ch, "554 " + message);
     }
@@ -166,4 +124,55 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         return ch.write(ByteBuffer.wrap(payload));
     }
 
+    private class PolicyConnectionState implements ConnectionState {
+
+        private static final int READ_NAME = 1;
+
+        private static final int READ_VALUE = 2;
+
+        private int state = READ_NAME;
+
+        private String pendingPairName;
+
+        private StringBuilder pendingRead = new StringBuilder();
+
+        private List<Param> pendingRequest = new ArrayList<>();
+
+        @Override
+        public long read(SocketChannel ch, ByteBuffer buffer) throws IOException {
+            long bytesRead = 0;
+            while (buffer.remaining() > 0) {
+                final byte c = buffer.get();
+                bytesRead++;
+
+                switch (state) {
+                case READ_NAME:
+                    if (c == '\n') {
+                        handleRequest(ch, pendingRequest);
+                        pendingRequest = new ArrayList<>();
+                    } else if (c == '=') {
+                        pendingPairName = pendingRead.toString();
+                        pendingRead.setLength(0);
+                        state = READ_VALUE;
+                    } else {
+                        pendingRead.append((char)c);
+                    }
+                    break;
+                case READ_VALUE:
+                    if (c == '\n') {
+                        pendingRequest.add(new Param(pendingPairName, pendingRead.toString()));
+                        pendingRead.setLength(0);
+                        state = READ_NAME;
+                    } else {
+                        pendingRead.append((char)c);
+                    }
+                    break;
+                default:
+                    writePermanentError(ch, "Reached state " + state + ", but I don't know what to do...");
+                    ch.close();
+                }
+            }
+            return bytesRead;
+        }
+    }
 }

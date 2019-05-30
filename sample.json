@@ -36,6 +36,15 @@
       "bind-port": 9004,
       "auth-token": "test123",
       "request-timeout": 2000
+    },
+    {
+      "name": "socketmap",
+      "mode": "socketmap-lookup",
+      "target": "http://localhost:9000/api/postfix",
+      "bind-address": "0.0.0.0",
+      "bind-port": 9005,
+      "auth-token": "test123",
+      "request-timeout": 2000
     }
   ]
 }

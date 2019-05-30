@@ -17,72 +17,90 @@
  */
 package tel.schich.postfixrestconnector;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.asynchttpclient.Dsl;
+import java.util.List;
+import org.asynchttpclient.Param;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tel.schich.postfixrestconnector.mocks.MockPolicyRequestHandler;
 
+import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.*;
 import static tel.schich.postfixrestconnector.LookupResponseHelper.DEFAULT_RESPONSE_VALUE_SEPARATOR;
-import static tel.schich.postfixrestconnector.PostfixRequestHandler.ReadResult.*;
 import static tel.schich.postfixrestconnector.TestHelper.stringBuffer;
+import static tel.schich.postfixrestconnector.mocks.MockSocketChannel.DEFAULT;
 
 class PolicyRequestHandlerTest {
-    private static final Endpoint endpoint =
+    private static final Endpoint ENDPOINT =
             new Endpoint("test-policy", "http://localhost", "0.0.0.0", 9000, "test123", 1, "policy", DEFAULT_RESPONSE_VALUE_SEPARATOR);
-    private static final PolicyRequestHandler handler =
-            new PolicyRequestHandler(endpoint, Dsl.asyncHttpClient(), new ObjectMapper());
+    private static final MockPolicyRequestHandler HANDLER = new MockPolicyRequestHandler(ENDPOINT);
+
     @Test
-    void readCompleteRequestComplete() {
+    void readCompleteRequestComplete() throws IOException {
         String firstLine = "a=b\n\n";
 
-        StringBuilder sb = new StringBuilder();
         ByteBuffer buf = stringBuffer(firstLine);
+        ConnectionState state = HANDLER.createState();
+        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        List<Param> data = HANDLER.getData();
 
-        assertEquals(COMPLETE, handler.readRequest(buf, sb));
-        assertEquals(firstLine, sb.toString());
+        assertEquals(1, data.size());
+        assertEquals(data.get(0), new Param("a", "b"));
     }
+
     @Test
-    void readCompleteRequestBroken() {
+    void readCompleteRequestBroken() throws IOException {
         String firstLine = "a=b\n\na";
 
-        StringBuilder sb = new StringBuilder();
         ByteBuffer buf = stringBuffer(firstLine);
+        ConnectionState state = HANDLER.createState();
+        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        List<Param> data = HANDLER.getData();
 
-        assertEquals(BROKEN, handler.readRequest(buf, sb));
-        assertEquals(0, sb.length());
+        assertEquals(1, data.size());
+        assertEquals(data.get(0), new Param("a", "b"));
     }
 
     @Test
-    void readFragmentedRequestComplete() {
+    void readFragmentedRequestComplete() throws IOException {
         String firstLine = "a=b\n";
         String secondLine = "\n";
 
-        StringBuilder sb = new StringBuilder();
+        ConnectionState state = HANDLER.createState();
         ByteBuffer buf = stringBuffer(firstLine);
 
-        assertEquals(PENDING, handler.readRequest(buf, sb));
-        assertEquals(firstLine, sb.toString());
+        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        List<Param> data = HANDLER.getData();
+        assertNull(data);
 
         buf = stringBuffer(secondLine);
-        assertEquals(COMPLETE, handler.readRequest(buf, sb));
-        assertEquals(firstLine + secondLine, sb.toString());
+        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        data = HANDLER.getData();
+        assertEquals(singletonList(new Param("a", "b")), data);
     }
 
     @Test
-    void readFragmentedRequestBroken() {
+    void readFragmentedRequestBroken() throws IOException {
         String firstLine = "a=b\n";
         String secondLine = "\na";
+        String rest = "=c\n\n";
 
-        StringBuilder sb = new StringBuilder();
+        ConnectionState state = HANDLER.createState();
         ByteBuffer buf = stringBuffer(firstLine);
 
-        assertEquals(PENDING, handler.readRequest(buf, sb));
-        assertEquals(firstLine, sb.toString());
+        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        assertNull(HANDLER.getData());
 
         buf = stringBuffer(secondLine);
-        assertEquals(BROKEN, handler.readRequest(buf, sb));
-        assertEquals(firstLine, sb.toString());
+
+        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        assertEquals(singletonList(new Param("a", "b")), HANDLER.getData());
+
+        buf = stringBuffer(rest);
+
+        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        assertEquals(singletonList(new Param("a", "c")), HANDLER.getData());
     }
+
 }

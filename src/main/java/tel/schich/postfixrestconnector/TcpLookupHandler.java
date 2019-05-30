@@ -19,6 +19,7 @@ package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 
@@ -56,9 +57,8 @@ public class TcpLookupHandler implements PostfixRequestHandler {
     }
 
     @Override
-    public ReadResult readRequest(ByteBuffer buf, StringBuilder out) {
-        String s = readAsciiString(buf);
-        return readToEnd(out, s, END);
+    public ConnectionState createState() {
+        return new TcpConnectionState();
     }
 
     @Override
@@ -67,7 +67,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         ch.close();
     }
 
-    public void handleRequest(SocketChannel ch, String rawRequest) throws IOException {
+    private void handleRequest(SocketChannel ch, String rawRequest) throws IOException {
         LOGGER.info("Lookup request on endpoint {}: {}", endpoint.getName(), rawRequest);
 
         if (rawRequest.length() <= LOOKUP_PREFIX.length() || !rawRequest.startsWith(LOOKUP_PREFIX)) {
@@ -152,4 +152,23 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         return ch.write(ByteBuffer.wrap(payload));
     }
 
+    private class TcpConnectionState implements ConnectionState {
+        private StringBuilder pendingRead = new StringBuilder();
+
+        @Override
+        public long read(SocketChannel ch, ByteBuffer buffer) throws IOException {
+            long bytesRead = 0;
+            while (buffer.remaining() > 0) {
+                final byte c = buffer.get();
+                bytesRead++;
+                if (c == '\n') {
+                    handleRequest(ch, pendingRead.toString());
+                    pendingRead.setLength(0);
+                } else {
+                    pendingRead.append((char)c);
+                }
+            }
+            return bytesRead;
+        }
+    }
 }

@@ -17,34 +17,34 @@
  */
 package tel.schich.postfixrestconnector;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-import static org.asynchttpclient.Dsl.asyncHttpClient;
+import tel.schich.postfixrestconnector.mocks.MockSocketChannel;
+import tel.schich.postfixrestconnector.mocks.MockSocketmapLookupHandler;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static tel.schich.postfixrestconnector.LookupResponseHelper.DEFAULT_RESPONSE_VALUE_SEPARATOR;
-import static tel.schich.postfixrestconnector.PostfixRequestHandler.ReadResult.COMPLETE;
 import static tel.schich.postfixrestconnector.SocketmapLookupHandler.MODE_NAME;
 import static tel.schich.postfixrestconnector.TestHelper.stringBuffer;
 
 class SocketmapLookupHandlerTest {
-    private static final Endpoint endpoint =
+    private static final Endpoint ENDPOINT =
             new Endpoint("test-policy", "http://localhost", "0.0.0.0", 9000, "test123", 1, MODE_NAME, DEFAULT_RESPONSE_VALUE_SEPARATOR);
+    private static final MockSocketmapLookupHandler HANDLER = new MockSocketmapLookupHandler(ENDPOINT);
 
     @Test
     public void testRequest() throws IOException {
-        final SocketmapLookupHandler h = new SocketmapLookupHandler(endpoint, asyncHttpClient(), new ObjectMapper());
-        final String s = "10:0123456789,";
+        final String d = "0123456789";
+        final String s = "10:" + d + ",";
         final ByteBuffer b = stringBuffer(s);
-        final StringBuilder sb = new StringBuilder();
         final SocketChannel sc = new MockSocketChannel();
-        assertEquals(COMPLETE, h.readRequest(b, sb));
-        assertEquals(s, sb.toString());
-        h.handleRequest(sc, sb.toString());
+        ConnectionState state = HANDLER.createState();
+        assertEquals(s.length(), state.read(sc, b));
+        assertEquals(s, HANDLER.getData());
     }
 
 }

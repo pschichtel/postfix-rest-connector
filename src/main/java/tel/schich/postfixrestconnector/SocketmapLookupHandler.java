@@ -30,14 +30,12 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static tel.schich.postfixrestconnector.PostfixProtocol.*;
 
 public class SocketmapLookupHandler implements PostfixRequestHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SocketmapLookupHandler.class);
     public static final String MODE_NAME = "socketmap-lookup";
 
-    private static final String LOOKUP_PREFIX = "get ";
     private static final int MAXIMUM_RESPONSE_LENGTH = 10000;
     private static final String END = ",";
 
@@ -57,9 +55,8 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
     }
 
     @Override
-    public ReadResult readRequest(ByteBuffer buf, StringBuilder out) {
-        String s = readAsciiString(buf);
-        return readToEnd(out, s, END);
+    public ConnectionState createState() {
+        return new SocketMapConnectionState();
     }
 
     @Override
@@ -68,10 +65,8 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         ch.close();
     }
 
-    public void handleRequest(SocketChannel ch, String rawRequest) throws IOException {
-        LOGGER.info("Lookup request on endpoint {}: {}", endpoint.getName(), rawRequest);
-
-        String requestData = Netstring.parseOne(rawRequest);
+    protected void handleRequest(SocketChannel ch, String requestData) throws IOException {
+        LOGGER.info("Lookup request on endpoint {}: {}", endpoint.getName(), requestData);
 
         final int spacePos = requestData.indexOf(' ');
         if (spacePos == -1) {
@@ -175,4 +170,63 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         return ch.write(ByteBuffer.wrap(payload));
     }
 
+    private class SocketMapConnectionState implements ConnectionState {
+
+        private static final int READ_LENGTH = 1;
+
+        private static final int READ_VALUE = 2;
+
+        private static final int READ_END = 3;
+
+        private int state = READ_LENGTH;
+
+        private long length = 0;
+
+        private StringBuilder pendingRead = new StringBuilder();
+
+        @Override
+        public long read(SocketChannel ch, ByteBuffer buffer) throws IOException {
+            long bytesRead = 0;
+            while (buffer.remaining() > 0) {
+                final byte c = buffer.get();
+                bytesRead++;
+
+                switch (state) {
+                case READ_LENGTH:
+                    if (c == ':') {
+                        state = READ_VALUE;
+                        pendingRead.setLength(0);
+                    } else {
+                        int digit = c - '0';
+                        if (digit < 0 || digit > 9) {
+                            writeBrokenRequestErrorAndClose(ch, "Expected a digit, but got: " + (char)c);
+                        }
+                        length = length * 10 + digit;
+                    }
+                    break;
+                case READ_VALUE:
+                    if (pendingRead.length() < length) {
+                        pendingRead.append((char)c);
+                    }
+
+                    if (pendingRead.length() >= length) {
+                        state = READ_END;
+                    }
+                    break;
+                case READ_END:
+                    if (c == ',') {
+                        state = READ_LENGTH;
+                        length = 0;
+                        handleRequest(ch, pendingRead.toString());
+                    } else {
+                        writeBrokenRequestErrorAndClose(ch, "Expected comma, but got: " + (char)c);
+                    }
+                    break;
+                default:
+                    writeBrokenRequestErrorAndClose(ch, "Reached state " + state + ", but I don't know what to do...");
+                }
+            }
+            return bytesRead;
+        }
+    }
 }

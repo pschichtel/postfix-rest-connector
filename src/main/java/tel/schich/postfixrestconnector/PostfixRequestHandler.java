@@ -18,16 +18,12 @@
 package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public interface PostfixRequestHandler {
     Endpoint getEndpoint();
-    ReadResult readRequest(ByteBuffer buf, StringBuilder out) throws IOException;
-    void handleRequest(SocketChannel ch, String rawRequest) throws IOException;
-    void handleReadError(SocketChannel ch) throws IOException;
 
-    enum ReadResult {
-        PENDING, COMPLETE, BROKEN
-    }
+    ConnectionState createState();
+
+    void handleReadError(SocketChannel ch) throws IOException;
 }

@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector.mocks;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -27,6 +27,8 @@ import java.nio.channels.spi.SelectorProvider;
 import java.util.Set;
 
 public class MockSocketChannel extends SocketChannel {
+
+    public static final MockSocketChannel DEFAULT = new MockSocketChannel();
 
     public MockSocketChannel() {
         super(SelectorProvider.provider());

@@ -19,9 +19,6 @@ package tel.schich.postfixrestconnector;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.nio.ByteBuffer;
-
-import tel.schich.postfixrestconnector.PostfixRequestHandler.ReadResult;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
@@ -29,45 +26,12 @@ public class PostfixProtocol {
 
     private PostfixProtocol() {}
 
-    public static String readAsciiString(ByteBuffer buf) {
-        return readAsciiString(buf, -1);
-    }
-
-    public static String readAsciiString(ByteBuffer buf, int max) {
-        if (!buf.hasRemaining() || max == 0) {
-            return "";
-        }
-        final int bytesToRead = max == -1 ? buf.remaining() : max;
-        if (buf.isDirect()) {
-            byte[] jbuf = new byte[bytesToRead];
-            buf.get(jbuf);
-            return new String(jbuf, US_ASCII);
-        } else {
-            return new String(buf.array(), buf.position(), bytesToRead, US_ASCII);
-        }
-    }
-
     public static String decodeURLEncodedData(String data) {
         try {
             return URLDecoder.decode(data, US_ASCII.name());
         } catch (UnsupportedEncodingException e) {
             return data;
         }
-    }
-
-    public static ReadResult readToEnd(StringBuilder out, String input, String end) {
-        int endIndex = input.indexOf(end);
-        if (endIndex == -1) {
-            out.append(input);
-            return ReadResult.PENDING;
-        }
-
-        if (endIndex != (input.length() - end.length())) {
-            return ReadResult.BROKEN;
-        }
-
-        out.append(input);
-        return ReadResult.COMPLETE;
     }
 
     public static String encodeResponseData(String data) {
