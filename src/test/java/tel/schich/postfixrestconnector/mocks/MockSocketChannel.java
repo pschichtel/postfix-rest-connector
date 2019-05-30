@@ -17,7 +17,6 @@
  */
 package tel.schich.postfixrestconnector.mocks;
 
-import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketOption;
@@ -35,22 +34,22 @@ public class MockSocketChannel extends SocketChannel {
     }
 
     @Override
-    public SocketChannel bind(SocketAddress local) throws IOException {
+    public SocketChannel bind(SocketAddress local) {
         return null;
     }
 
     @Override
-    public <T> SocketChannel setOption(SocketOption<T> name, T value) throws IOException {
+    public <T> SocketChannel setOption(SocketOption<T> name, T value) {
         return null;
     }
 
     @Override
-    public SocketChannel shutdownInput() throws IOException {
+    public SocketChannel shutdownInput() {
         return null;
     }
 
     @Override
-    public SocketChannel shutdownOutput() throws IOException {
+    public SocketChannel shutdownOutput() {
         return null;
     }
 
@@ -70,49 +69,49 @@ public class MockSocketChannel extends SocketChannel {
     }
 
     @Override
-    public boolean connect(SocketAddress remote) throws IOException {
+    public boolean connect(SocketAddress remote) {
         return false;
     }
 
     @Override
-    public boolean finishConnect() throws IOException {
+    public boolean finishConnect() {
         return false;
     }
 
     @Override
-    public SocketAddress getRemoteAddress() throws IOException {
+    public SocketAddress getRemoteAddress() {
         return null;
     }
 
     @Override
-    public int read(ByteBuffer dst) throws IOException {
+    public int read(ByteBuffer dst) {
         return 0;
     }
 
     @Override
-    public long read(ByteBuffer[] dsts, int offset, int length) throws IOException {
+    public long read(ByteBuffer[] dsts, int offset, int length) {
         return 0;
     }
 
     @Override
-    public int write(ByteBuffer src) throws IOException {
+    public int write(ByteBuffer src) {
         int remaining = src.remaining();
         src.position(src.limit());
         return remaining;
     }
 
     @Override
-    public long write(ByteBuffer[] srcs, int offset, int length) throws IOException {
+    public long write(ByteBuffer[] srcs, int offset, int length) {
         return 0;
     }
 
     @Override
-    public SocketAddress getLocalAddress() throws IOException {
+    public SocketAddress getLocalAddress() {
         return null;
     }
 
     @Override
-    public <T> T getOption(SocketOption<T> name) throws IOException {
+    public <T> T getOption(SocketOption<T> name) {
         return null;
     }
 
@@ -122,12 +121,12 @@ public class MockSocketChannel extends SocketChannel {
     }
 
     @Override
-    protected void implCloseSelectableChannel() throws IOException {
+    protected void implCloseSelectableChannel() {
 
     }
 
     @Override
-    protected void implConfigureBlocking(boolean block) throws IOException {
+    protected void implConfigureBlocking(boolean block) {
 
     }
 }
