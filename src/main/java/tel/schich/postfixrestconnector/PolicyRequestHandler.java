@@ -114,8 +114,10 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
     }
 
     public static int writeActionResponse(SocketChannel ch, String action) throws IOException {
-        byte[] payload = ("action=" + action + LINE_END + LINE_END)
-                .getBytes(StandardCharsets.US_ASCII);
+        String text = "action=" + action + LINE_END + LINE_END;
+        byte[] payload = text.getBytes(StandardCharsets.US_ASCII);
+
+        LOGGER.info("Response: {}", text);
         return IOUtil.writeAll(ch, payload);
     }
 

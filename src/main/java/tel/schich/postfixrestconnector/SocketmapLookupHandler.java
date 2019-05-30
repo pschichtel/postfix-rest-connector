@@ -159,7 +159,9 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         {
             throw new IOException("response to long");
         }
-        byte[] payload = Netstring.compileOne(data).getBytes(US_ASCII);
+        String text = Netstring.compileOne(data);
+        LOGGER.info("Response: {}", text);
+        byte[] payload = text.getBytes(US_ASCII);
         return IOUtil.writeAll(ch, payload);
     }
 

@@ -137,11 +137,13 @@ public class TcpLookupHandler implements PostfixRequestHandler {
     }
 
     public static int writeResponse(SocketChannel ch, int code, String data) throws IOException {
-        byte[] payload = (String.valueOf(code) + ' ' + encodeResponseData(data) + END).getBytes(US_ASCII);
+        String text = String.valueOf(code) + ' ' + encodeResponseData(data) + END;
+        byte[] payload = text.getBytes(US_ASCII);
         if (payload.length > MAXIMUM_RESPONSE_LENGTH)
         {
             throw new IOException("response to long");
         }
+        LOGGER.info("Response: {}", text);
         return IOUtil.writeAll(ch, payload);
     }
 
