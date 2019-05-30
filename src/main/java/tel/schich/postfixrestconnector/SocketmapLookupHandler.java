@@ -134,7 +134,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
     }
 
     public static int writeNotFoundResponse(SocketChannel ch) throws IOException {
-        return writeResponse(ch, "");
+        return writeResponse(ch, "NOFOUND ");
     }
 
     public static void writeBrokenRequestErrorAndClose(SocketChannel ch, String reason) throws IOException {
