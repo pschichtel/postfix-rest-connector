@@ -29,9 +29,7 @@ class NetstringTest {
 
     @Test
     void parseOne() throws IOException {
-        Throwable t = assertThrows(IOException.class, () -> {
-            assertEquals("a", Netstring.parseOne("1:a,2:bc,"));
-        });
+        Throwable t = assertThrows(IOException.class, () -> assertEquals("a", Netstring.parseOne("1:a,2:bc,")));
         assertNull(t.getCause());
 
         assertEquals("a", Netstring.parseOne("1:a,"));

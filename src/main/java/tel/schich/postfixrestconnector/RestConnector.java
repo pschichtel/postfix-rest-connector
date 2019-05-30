@@ -21,7 +21,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -29,9 +28,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.DefaultAsyncHttpClientConfig;
@@ -94,8 +91,6 @@ public class RestConnector implements Closeable {
             LOGGER.info("Bound endpoint {} to address: {}", endpoint.getName(), serverChannel.getLocalAddress());
         }
 
-        Map<Channel, ConnectionState> connectionState = new HashMap<>();
-
         while (keepPolling) {
             if (selector.select() <= 0) {
                 continue;
@@ -115,10 +110,9 @@ public class RestConnector implements Closeable {
                     configureChannel(clientChannel);
                     PostfixRequestHandler handler = (PostfixRequestHandler) key.attachment();
                     Endpoint endpoint = handler.getEndpoint();
-                    clientChannel.register(selector, OP_READ, handler);
-                    connectionState.put(clientChannel, handler.createState());
+                    clientChannel.register(selector, OP_READ, handler.createState());
                     SocketAddress remoteAddress = clientChannel.getRemoteAddress();
-                    LOGGER.info("Incoming connection from {} on endpoint {}", remoteAddress, endpoint.getName());
+                    LOGGER.info("Client connected from {} on endpoint {}", remoteAddress, endpoint.getName());
                     continue;
                 }
 
@@ -128,14 +122,16 @@ public class RestConnector implements Closeable {
 
                 if (!channel.isOpen()) {
                     key.cancel();
-                    connectionState.remove(channel);
+                    Object attachment = key.attachment();
+                    if (attachment instanceof Closeable) {
+                        ((Closeable) attachment).close();
+                    }
                     continue;
                 }
 
                 if (key.isReadable() && channel instanceof SocketChannel) {
                     SocketChannel ch = (SocketChannel) channel;
-                    PostfixRequestHandler handler = (PostfixRequestHandler) key.attachment();
-                    ConnectionState state = connectionState.get(ch);
+                    ConnectionState state = (ConnectionState) key.attachment();
                     readChannel(ch, buffer, state);
                 }
             }

@@ -17,10 +17,11 @@
  */
 package tel.schich.postfixrestconnector;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-public interface ConnectionState {
+public interface ConnectionState extends Closeable {
     long read(SocketChannel ch, ByteBuffer buffer) throws IOException;
 }

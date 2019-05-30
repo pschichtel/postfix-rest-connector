@@ -30,15 +30,16 @@ public class Main {
         if (args.length == 1) {
             config = Paths.get(args[0]);
         } else {
-            System.out.println("Usage: <config path>");
+            System.err.println("Usage: <config path>");
             System.exit(1);
             return;
         }
 
-        RestConnector restConnector = new RestConnector();
-        Runtime.getRuntime().addShutdownHook(new Thread(restConnector::stop));
+        try (RestConnector restConnector = new RestConnector()) {
+            Runtime.getRuntime().addShutdownHook(new Thread(restConnector::stop));
 
-        restConnector.start(SelectorProvider.provider(), config);
+            restConnector.start(SelectorProvider.provider(), config);
+        }
     }
 
 }

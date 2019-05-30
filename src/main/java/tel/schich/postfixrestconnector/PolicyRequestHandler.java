@@ -166,5 +166,11 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
             }
             return bytesRead;
         }
+
+        @Override
+        public void close() {
+            this.pendingRead = null;
+            this.pendingRequest = null;
+        }
     }
 }
