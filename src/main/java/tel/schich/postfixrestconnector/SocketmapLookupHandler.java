@@ -76,8 +76,10 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         final String lookupKey = PostfixProtocol.decodeURLEncodedData(requestData.substring(spacePos + 1));
 
         BoundRequestBuilder prepareRequest = http.prepareGet(endpoint.getTarget())
-                .setHeader("X-Auth-Token", endpoint.getAuthToken()).setRequestTimeout(endpoint.getRequestTimeout())
-                .addQueryParam("name", name).addQueryParam("key", lookupKey);
+                .setHeader("X-Auth-Token", endpoint.getAuthToken())
+                .addQueryParam("name", name)
+                .addQueryParam("key", lookupKey)
+                .setRequestTimeout(endpoint.getRequestTimeout());
 
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
@@ -105,7 +107,6 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                             return writeNotFoundResponse(ch);
                         } else {
                             LOGGER.info("Response: {}", responseValues);
-
                             return writeOkResponse(ch, responseValues, endpoint.getListSeparator());
                         }
                     }

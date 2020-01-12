@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.asynchttpclient.AsyncHttpClient;
@@ -77,13 +78,18 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         String lookupKey = PostfixProtocol.decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());
 
         BoundRequestBuilder prepareRequest = http.prepareGet(endpoint.getTarget())
-                .setHeader("X-Auth-Token", endpoint.getAuthToken()).setRequestTimeout(endpoint.getRequestTimeout())
-                .addQueryParam("key", lookupKey);
+                .setHeader("X-Auth-Token", endpoint.getAuthToken())
+                .addQueryParam("key", lookupKey)
+                .setRequestTimeout(endpoint.getRequestTimeout());
 
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
                 if (err != null) {
-                    writeError(ch, err.getMessage());
+                    if (err instanceof TimeoutException) {
+                        writeError(ch, "REST request timed out: " + err.getMessage());
+                    } else {
+                        writeError(ch, err.getMessage());
+                    }
                     return null;
                 }
 

@@ -65,7 +65,8 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         BoundRequestBuilder prepareRequest = http.preparePost(endpoint.getTarget())
                 .setHeader("X-Auth-Token", endpoint.getAuthToken())
                 .addHeader("Content-Type", "application/x-www-form-urlencoded")
-                .setRequestTimeout(endpoint.getRequestTimeout()).setFormParams(params);
+                .setFormParams(params)
+                .setRequestTimeout(endpoint.getRequestTimeout());
 
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
