@@ -19,7 +19,6 @@ package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
@@ -63,16 +62,15 @@ public class TcpLookupHandler implements PostfixRequestHandler {
     }
 
     @Override
-    public ConnectionState createState() {
-        return new TcpConnectionState();
+    public ConnectionReader createReader() {
+        return new TcpLookupReader();
     }
 
-    private void handleRequest(SocketChannel ch, UUID id, String rawRequest) throws IOException {
+    private void handleRequest(SocketOps ch, UUID id, String rawRequest) throws IOException {
         LOGGER.info("{} - tcp-lookup request on endpoint {}: {}", id, endpoint.getName(), rawRequest);
 
         if (rawRequest.length() <= LOOKUP_PREFIX.length() || !rawRequest.startsWith(LOOKUP_PREFIX)) {
-            writeError(ch, id, "Broken request!");
-            ch.close();
+            writeTerminalError(ch, id, id + " - Broken request!");
             return;
         }
 
@@ -103,20 +101,25 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                     String data = response.getResponseBody();
                     if (data == null) {
                         LOGGER.warn("{} - No result!", id);
-                        return writeError(ch, id, "REST result was broken!");
+                        writeError(ch, id, "REST result was broken!");
+                        return null;
                     } else if (data.isEmpty()) {
-                        return writeNotFoundResponse(ch, id);
+                        writeNotFoundResponse(ch, id);
+                        return null;
                     } else {
                         final List<String> responseValues = LookupResponseHelper.parseResponse(mapper, data);
                         if (responseValues.isEmpty()) {
-                            return writeNotFoundResponse(ch, id);
+                            writeNotFoundResponse(ch, id);
+                            return null;
                         } else {
                             LOGGER.info("{} - Response: {}", id, responseValues);
-                            return writeSuccessfulResponse(ch, id, responseValues, endpoint.getListSeparator());
+                            writeSuccessfulResponse(ch, id, responseValues, endpoint.getListSeparator());
+                            return null;
                         }
                     }
                 } else if (statusCode == 404) {
-                    return writeNotFoundResponse(ch, id);
+                    writeNotFoundResponse(ch, id);
+                    return null;
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
                     writeError(ch, id,
@@ -139,40 +142,44 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         });
     }
 
-    public static int writeSuccessfulResponse(SocketChannel ch, UUID id, List<String> data, String separator)
+    public static void writeSuccessfulResponse(SocketOps ch, UUID id, List<String> data, String separator)
             throws IOException {
-        return writeResponse(ch, id, 200, LookupResponseHelper.encodeResponse(data, separator));
+        writeResponse(ch, id, 200, LookupResponseHelper.encodeResponse(data, separator), false);
     }
 
-    public static int writeNotFoundResponse(SocketChannel ch, UUID id) throws IOException {
-        return writeResponse(ch, id, 500, "key not found");
+    public static void writeNotFoundResponse(SocketOps ch, UUID id) throws IOException {
+        writeResponse(ch, id, 500, "key not found", false);
     }
 
-    public static int writeError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, 400, message);
+    public static void writeError(SocketOps ch, UUID id, String message) throws IOException {
+        writeResponse(ch, id, 400, message, false);
     }
 
-    public static int writeResponse(SocketChannel ch, UUID id, int code, String data) throws IOException {
+    public static void writeTerminalError(SocketOps ch, UUID id, String message) throws IOException {
+        writeResponse(ch, id, 400, message, true);
+    }
+
+    public static void writeResponse(SocketOps ch, UUID id, int code, String data, boolean close) throws IOException {
         String text = String.valueOf(code) + ' ' + encodeResponseData(data) + END;
         byte[] payload = text.getBytes(US_ASCII);
         if (payload.length > MAXIMUM_RESPONSE_LENGTH) {
             throw new IOException(id + " - response to long");
         }
         LOGGER.info("{} - Response: {}", id, text);
-        return IOUtil.writeAll(ch, payload);
+        HandlerHelper.writeAndClose(ch, payload, id, LOGGER, close);
     }
 
-    private class TcpConnectionState extends BaseConnectionState {
+    private class TcpLookupReader implements ConnectionReader {
         private StringBuilder pendingRead = new StringBuilder();
 
         @Override
-        public long read(SocketChannel ch, ByteBuffer buffer) throws IOException {
+        public long read(ConnectionState s, SocketOps ch, ByteBuffer buffer) throws IOException {
             long bytesRead = 0;
             while (buffer.remaining() > 0) {
                 final byte c = buffer.get();
                 bytesRead++;
                 if (c == END) {
-                    handleRequest(ch, getId(), pendingRead.toString());
+                    handleRequest(ch, s.getId(), pendingRead.toString());
                     pendingRead.setLength(0);
                 } else {
                     pendingRead.append((char) c);

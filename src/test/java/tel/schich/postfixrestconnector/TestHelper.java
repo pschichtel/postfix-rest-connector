@@ -17,11 +17,18 @@
  */
 package tel.schich.postfixrestconnector;
 
+import tel.schich.postfixrestconnector.mocks.MockSelectionKey;
+import tel.schich.postfixrestconnector.mocks.MockSocketChannel;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 public class TestHelper {
     static ByteBuffer stringBuffer(String s) {
         return ByteBuffer.wrap(s.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    static ConnectionState newState(PostfixRequestHandler handler) {
+        return new ConnectionState(MockSelectionKey.DEFAULT, MockSocketChannel.DEFAULT, handler.createReader());
     }
 }

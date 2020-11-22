@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
@@ -60,11 +59,11 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
     }
 
     @Override
-    public ConnectionState createState() {
-        return new SocketMapConnectionState();
+    public ConnectionReader createReader() {
+        return new SocketmapLookupReader();
     }
 
-    protected void handleRequest(SocketChannel ch, UUID id, String requestData) throws IOException {
+    protected void handleRequest(SocketOps ch, UUID id, String requestData) throws IOException {
         LOGGER.info("{} - socketmap-lookup request on endpoint {}: {}", id, endpoint.getName(), requestData);
 
         final int spacePos = requestData.indexOf(' ');
@@ -102,26 +101,30 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     String data = response.getResponseBody();
                     if (data == null) {
                         LOGGER.warn("{} - No result!", id);
-                        return writeTempError(ch, id, "REST result was broken!");
+                        writeTempError(ch, id, "REST result was broken!");
+                        return null;
                     } else if (data.isEmpty()) {
-                        return writeNotFoundResponse(ch, id);
+                        writeNotFoundResponse(ch, id);
+                        return null;
                     } else {
                         final List<String> responseValues = LookupResponseHelper.parseResponse(mapper, data);
                         if (responseValues.isEmpty()) {
-                            return writeNotFoundResponse(ch, id);
+                            writeNotFoundResponse(ch, id);
                         } else {
                             LOGGER.info("{} - Response: {}", id, responseValues);
-                            return writeOkResponse(ch, id, responseValues, endpoint.getListSeparator());
+                            writeOkResponse(ch, id, responseValues, endpoint.getListSeparator());
                         }
+                        return null;
                     }
                 } else if (statusCode == 404) {
-                    return writeNotFoundResponse(ch, id);
+                    writeNotFoundResponse(ch, id);
+                    return null;
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
                     writePermError(ch, id,
-                            "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
+                            "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode, false);
                 } else if (statusCode >= 500 && statusCode < 600) {
-                    // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
+                    // REST call failed due to an server err -> emit temporary error (REST server might be overloaded)
                     writeTempError(ch, id, "REST server had an internal error: " + statusCode);
                 } else {
                     writeTempError(ch, id, "REST server responded with an unspecified code: " + statusCode);
@@ -138,43 +141,41 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         });
     }
 
-    public static int writeOkResponse(SocketChannel ch, UUID id, List<String> data, String separator) throws IOException {
-        return writeResponse(ch, id, "OK " + LookupResponseHelper.encodeResponse(data, separator));
+    public static void writeOkResponse(SocketOps ch, UUID id, List<String> data, String separator) throws IOException {
+        writeResponse(ch, id, "OK " + LookupResponseHelper.encodeResponse(data, separator), false);
     }
 
-    public static int writeNotFoundResponse(SocketChannel ch, UUID id) throws IOException {
-        return writeResponse(ch, id, "NOTFOUND ");
+    public static void writeNotFoundResponse(SocketOps ch, UUID id) throws IOException {
+        writeResponse(ch, id, "NOTFOUND ", false);
     }
 
-    public static void writeBrokenRequestErrorAndClose(SocketChannel ch, UUID id, String reason) throws IOException {
+    public static void writeBrokenRequestErrorAndClose(SocketOps ch, UUID id, String reason) throws IOException {
         LOGGER.error("{} - broken request: {}", id, reason);
-        writePermError(ch, id, "Broken request! (" + reason + ")");
-        ch.close();
+        writePermError(ch, id, "Broken request! (" + reason + ")", true);
     }
 
-    public static int writeTimeoutError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, "TIMEOUT " + message);
+    public static void writeTimeoutError(SocketOps ch, UUID id, String message) throws IOException {
+        writeResponse(ch, id, "TIMEOUT " + message, false);
     }
 
-    public static int writeTempError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, "TEMP " + message);
+    public static void writeTempError(SocketOps ch, UUID id, String message) throws IOException {
+        writeResponse(ch, id, "TEMP " + message, false);
     }
 
-    public static int writePermError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, "PERM " + message);
+    public static void writePermError(SocketOps ch, UUID id, String message, boolean close) throws IOException {
+        writeResponse(ch, id, "PERM " + message, close);
     }
 
-    public static int writeResponse(SocketChannel ch, UUID id, String data) throws IOException {
+    public static void writeResponse(SocketOps ch, UUID id, String data, boolean close) throws IOException {
         if (data.length() > MAXIMUM_RESPONSE_LENGTH) {
             throw new IOException(id + " - response to long");
         }
         String text = Netstring.compileOne(data);
-        LOGGER.info("{}  -Response: {}", id, text);
-        byte[] payload = text.getBytes(US_ASCII);
-        return IOUtil.writeAll(ch, payload);
+        LOGGER.info("{} - Response: {}", id, text);
+        HandlerHelper.writeAndClose(ch, text.getBytes(US_ASCII), id, LOGGER, close);
     }
 
-    private class SocketMapConnectionState  extends BaseConnectionState {
+    private class SocketmapLookupReader implements ConnectionReader {
 
         private static final int READ_LENGTH = 1;
 
@@ -189,7 +190,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         private StringBuilder pendingRead = new StringBuilder();
 
         @Override
-        public long read(SocketChannel ch, ByteBuffer buffer) throws IOException {
+        public long read(ConnectionState s, SocketOps ch, ByteBuffer buffer) throws IOException {
             long bytesRead = 0;
             while (buffer.remaining() > 0) {
                 final byte c = buffer.get();
@@ -203,7 +204,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     } else {
                         int digit = c - '0';
                         if (digit < 0 || digit > 9) {
-                            writeBrokenRequestErrorAndClose(ch, getId(), "Expected a digit, but got: " + (char) c);
+                            writeBrokenRequestErrorAndClose(ch, s.getId(), "Expected a digit, but got: " + (char) c);
                         }
                         length = length * 10 + digit;
                     }
@@ -221,13 +222,13 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     if (c == END) {
                         state = READ_LENGTH;
                         length = 0;
-                        handleRequest(ch, getId(), pendingRead.toString());
+                        handleRequest(ch, s.getId(), pendingRead.toString());
                     } else {
-                        writeBrokenRequestErrorAndClose(ch, getId(), "Expected comma, but got: " + (char) c);
+                        writeBrokenRequestErrorAndClose(ch, s.getId(), "Expected comma, but got: " + (char) c);
                     }
                     break;
                 default:
-                    writeBrokenRequestErrorAndClose(ch, getId(), "Reached state " + state + ", but I don't know what to do...");
+                    writeBrokenRequestErrorAndClose(ch, s.getId(), "Reached state " + state + ", but I don't know what to do...");
                 }
             }
             return bytesRead;

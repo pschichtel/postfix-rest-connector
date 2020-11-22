@@ -21,9 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 
-import tel.schich.postfixrestconnector.mocks.MockSocketChannel;
 import tel.schich.postfixrestconnector.mocks.MockSocketmapLookupHandler;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -41,9 +39,8 @@ class SocketmapLookupHandlerTest {
         final String d = "test 0123456789";
         final String s = d.length() + ":" + d + ",";
         final ByteBuffer b = stringBuffer(s);
-        final SocketChannel sc = new MockSocketChannel();
-        ConnectionState state = HANDLER.createState();
-        assertEquals(s.length(), state.read(sc, b));
+        ConnectionState state = TestHelper.newState(HANDLER);
+        assertEquals(s.length(), state.read(((op, k) -> {}), b));
         assertEquals(d, HANDLER.getData());
     }
 

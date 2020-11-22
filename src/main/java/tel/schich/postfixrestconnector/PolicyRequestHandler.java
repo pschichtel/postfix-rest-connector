@@ -17,9 +17,7 @@
  */
 package tel.schich.postfixrestconnector;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -56,11 +54,11 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
     }
 
     @Override
-    public ConnectionState createState() {
-        return new PolicyConnectionState();
+    public ConnectionReader createReader() {
+        return new PolicyRequestReader();
     }
 
-    protected void handleRequest(SocketChannel ch, UUID id, List<Param> params) {
+    protected void handleRequest(SocketOps ch, UUID id, List<Param> params) {
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("{} - Policy request on endpoint {}: {}", id, endpoint.getName(), paramsToString(params));
         }
@@ -73,66 +71,57 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                 .setRequestTimeout(endpoint.getRequestTimeout());
 
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
-            try {
-                if (err != null) {
-                    LOGGER.error("{} - error occurred during request!", id, err);
-                    if (err instanceof TimeoutException) {
-                        writeTemporaryError(ch, id, "REST request timed out: " + err.getMessage());
-                    } else {
-                        writeTemporaryError(ch, id, err.getMessage());
-                    }
-                    ch.close();
-                    return null;
+            if (err != null) {
+                LOGGER.error("{} - error occurred during request!", id, err);
+                if (err instanceof TimeoutException) {
+                    writeTemporaryError(ch, id, "REST request timed out: " + err.getMessage(), true);
+                } else {
+                    writeTemporaryError(ch, id, err.getMessage(), true);
                 }
+                return null;
+            }
 
-                int statusCode = response.getStatusCode();
-                LOGGER.info("{} - received response: {}", id, statusCode);
-                if (statusCode == 200) {
-                    // REST call successful -> return data
-                    String data = response.getResponseBody();
-                    if (data != null) {
-                        String trimmed = data.trim();
-                        LOGGER.info("{} - Response: {}", id, trimmed);
-                        return writeActionResponse(ch, id, trimmed);
-                    } else {
-                        LOGGER.warn("{} - No result!", id);
-                        return writeTemporaryError(ch, id, "REST result was broken!");
-                    }
-                } else if (statusCode >= 400 && statusCode < 500) {
-                    // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                    writePermanentError(ch, id, "REST server signaled a user error, is the connector misconfigured?");
-                } else if (statusCode >= 500 && statusCode < 600) {
-                    // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
-                    writeTemporaryError(ch, id, "REST server had an internal error!");
+            int statusCode = response.getStatusCode();
+            LOGGER.info("{} - received response: {}", id, statusCode);
+            if (statusCode == 200) {
+                // REST call successful -> return data
+                String data = response.getResponseBody();
+                if (data != null) {
+                    String trimmed = data.trim();
+                    LOGGER.info("{} - Response: {}", id, trimmed);
+                    writeActionResponse(ch, id, trimmed, false);
+                } else {
+                    LOGGER.warn("{} - No result!", id);
+                    writeTemporaryError(ch, id, "REST result was broken!", false);
                 }
-            } catch (IOException e) {
-                LOGGER.error("Failed to write response!", e);
-                try {
-                    writeTemporaryError(ch, id, "REST connector encountered a problem!");
-                } catch (IOException ex) {
-                    LOGGER.error("{} - While recovering from an error failed to write response!", id, e);
-                }
+                return null;
+            } else if (statusCode >= 400 && statusCode < 500) {
+                // REST call failed due to user error -> emit permanent error (connector is misconfigured)
+                writePermanentError(ch, id, "REST server signaled a user error, is the connector misconfigured?", false);
+            } else if (statusCode >= 500 && statusCode < 600) {
+                // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
+                writeTemporaryError(ch, id, "REST server had an internal error!", false);
             }
             return null;
         });
     }
 
-    private static int writePermanentError(SocketChannel ch, UUID id, String message) throws IOException {
+    private static void writePermanentError(SocketOps ch, UUID id, String message, boolean close) {
         LOGGER.error("{} - permanent error: {}", id, message);
-        return writeActionResponse(ch, id, "554 " + message);
+        writeActionResponse(ch, id, "554 " + message, close);
     }
 
-    public static int writeTemporaryError(SocketChannel ch, UUID id, String message) throws IOException {
+    public static void writeTemporaryError(SocketOps ch, UUID id, String message, boolean close) {
         LOGGER.warn("{} - temporary error: {}", id, message);
-        return writeActionResponse(ch, id, "451 " + message);
+        writeActionResponse(ch, id, "451 " + message, close);
     }
 
-    public static int writeActionResponse(SocketChannel ch, UUID id, String action) throws IOException {
+    public static void writeActionResponse(SocketOps ch, UUID id, String action, boolean close) {
         String text = "action=" + action + LINE_END + LINE_END;
         byte[] payload = text.getBytes(StandardCharsets.US_ASCII);
 
         LOGGER.info("{} - Response: {}", id, text);
-        return IOUtil.writeAll(ch, payload);
+        HandlerHelper.writeAndClose(ch, payload, id, LOGGER, close);
     }
 
     private static String paramsToString(List<Param> params) {
@@ -149,7 +138,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         return s.toString();
     }
 
-    private class PolicyConnectionState extends BaseConnectionState {
+    private class PolicyRequestReader implements ConnectionReader {
 
         private static final int READ_NAME = 1;
 
@@ -164,7 +153,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         private List<Param> pendingRequest = new ArrayList<>();
 
         @Override
-        public long read(SocketChannel ch, ByteBuffer buffer) throws IOException {
+        public long read(ConnectionState s, SocketOps ch, ByteBuffer buffer) {
             long bytesRead = 0;
             while (buffer.remaining() > 0) {
                 final byte c = buffer.get();
@@ -173,7 +162,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                 switch (state) {
                 case READ_NAME:
                     if (c == LINE_END) {
-                        handleRequest(ch, getId(), pendingRequest);
+                        handleRequest(ch, s.getId(), pendingRequest);
                         pendingRequest = new ArrayList<>();
                     } else if (c == '=') {
                         pendingPairName = pendingRead.toString();
@@ -193,8 +182,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                     }
                     break;
                 default:
-                    writePermanentError(ch, getId(), "Reached state " + state + ", but I don't know what to do...");
-                    ch.close();
+                    writePermanentError(ch, s.getId(), "Reached state " + state + ", but I don't know what to do...", true);
                 }
             }
             return bytesRead;

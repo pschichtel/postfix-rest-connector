@@ -20,5 +20,5 @@ package tel.schich.postfixrestconnector;
 public interface PostfixRequestHandler {
     Endpoint getEndpoint();
 
-    ConnectionState createState();
+    ConnectionReader createReader();
 }

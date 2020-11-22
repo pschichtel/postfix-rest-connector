@@ -18,13 +18,13 @@
 package tel.schich.postfixrestconnector.mocks;
 
 import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import java.util.UUID;
 
 import org.asynchttpclient.Dsl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import tel.schich.postfixrestconnector.Endpoint;
+import tel.schich.postfixrestconnector.SocketOps;
 import tel.schich.postfixrestconnector.SocketmapLookupHandler;
 
 public class MockSocketmapLookupHandler extends SocketmapLookupHandler {
@@ -35,7 +35,7 @@ public class MockSocketmapLookupHandler extends SocketmapLookupHandler {
     }
 
     @Override
-    protected void handleRequest(SocketChannel ch, UUID id, String requestData) throws IOException {
+    protected void handleRequest(SocketOps ch, UUID id, String requestData) throws IOException {
         data = requestData;
         super.handleRequest(ch, id, requestData);
     }

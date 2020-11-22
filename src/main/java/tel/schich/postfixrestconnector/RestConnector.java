@@ -38,8 +38,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static java.net.StandardSocketOptions.TCP_NODELAY;
-import static java.nio.channels.SelectionKey.OP_ACCEPT;
-import static java.nio.channels.SelectionKey.OP_READ;
+import static java.nio.channels.SelectionKey.*;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
 
 public class RestConnector implements Closeable {
@@ -63,7 +62,6 @@ public class RestConnector implements Closeable {
     }
 
     private void start(SelectorProvider provider, ObjectMapper mapper, Configuration config) throws IOException {
-
         selector = provider.openSelector();
         final ByteBuffer buffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
         final AsyncHttpClient restClient = getConfiguredClient(config);
@@ -110,10 +108,12 @@ public class RestConnector implements Closeable {
                     final ServerSocketChannel ch = (ServerSocketChannel) channel;
                     final SocketChannel clientChannel = ch.accept();
                     configureChannel(clientChannel);
-                    PostfixRequestHandler handler = (PostfixRequestHandler) key.attachment();
+                    final PostfixRequestHandler handler = (PostfixRequestHandler) key.attachment();
                     final Endpoint endpoint = handler.getEndpoint();
-                    final ConnectionState state = handler.createState();
-                    clientChannel.register(selector, OP_READ, state);
+                    final SelectionKey newKey = clientChannel.register(selector, OP_READ);
+                    final ConnectionState state = new ConnectionState(newKey, clientChannel, handler.createReader());
+                    newKey.attach(state);
+
                     final SocketAddress remoteAddress = clientChannel.getRemoteAddress();
                     LOGGER.info("{} - Client connected from {} on endpoint {}", state.getId(), remoteAddress, endpoint.getName());
                     continue;
@@ -132,10 +132,22 @@ public class RestConnector implements Closeable {
                     continue;
                 }
 
-                if (key.isReadable() && channel instanceof SocketChannel) {
+                if (channel instanceof SocketChannel) {
                     SocketChannel ch = (SocketChannel) channel;
                     ConnectionState state = (ConnectionState) key.attachment();
-                    readChannel(ch, buffer, state);
+                    if (key.isReadable()) {
+                        buffer.clear();
+                        readChannel(ch, buffer, state);
+                    }
+                    if (key.isWritable()) {
+                        final ConnectionWriter writer = state.getWriter();
+                        if (writer != null) {
+                            buffer.clear();
+                            if (writer.run(ch, buffer)) {
+                                state.clearWriter();
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -154,7 +166,6 @@ public class RestConnector implements Closeable {
     }
 
     private static void readChannel(SocketChannel ch, ByteBuffer buffer, ConnectionState state) throws IOException {
-        buffer.clear();
         int bytesRead;
         try {
             bytesRead = ch.read(buffer);
@@ -168,7 +179,7 @@ public class RestConnector implements Closeable {
         }
 
         buffer.flip();
-        state.read(ch, buffer);
+        state.read(state, buffer);
     }
 
     private static void configureChannel(SelectableChannel ch) throws IOException {

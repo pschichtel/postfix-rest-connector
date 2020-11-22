@@ -17,21 +17,31 @@
  */
 package tel.schich.postfixrestconnector;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.WritableByteChannel;
+import org.slf4j.Logger;
 
-class IOUtil {
+import java.util.UUID;
 
-    private IOUtil() {
-    }
+public abstract class HandlerHelper {
+    private HandlerHelper() {}
 
-    static int writeAll(WritableByteChannel ch, byte[] payload) throws IOException {
-        ByteBuffer buf = ByteBuffer.wrap(payload);
-        int bytesWritten = 0;
-        while (buf.hasRemaining()) {
-            bytesWritten += ch.write(buf);
+    public static void writeAndClose(SocketOps ch, byte[] payload, UUID id, Logger logger, boolean close) {
+        if (close) {
+            ch.writeAndClose(payload, t -> {
+                if (t != null) {
+                    logger.error("{} - write and/or close failed!", id, t);
+                }
+            });
+        } else {
+            ch.write(payload, writeError -> {
+                if (writeError != null) {
+                    logger.error("{} - write failed, closing...", id, writeError);
+                    ch.close(closeError -> {
+                        if (closeError != null) {
+                            logger.error("{} - close failed!", id, closeError);
+                        }
+                    });
+                }
+            });
         }
-        return bytesWritten;
     }
 }

@@ -29,9 +29,9 @@ import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.*;
 import static tel.schich.postfixrestconnector.LookupResponseHelper.DEFAULT_RESPONSE_VALUE_SEPARATOR;
 import static tel.schich.postfixrestconnector.TestHelper.stringBuffer;
-import static tel.schich.postfixrestconnector.mocks.MockSocketChannel.DEFAULT;
 
 class PolicyRequestHandlerTest {
+    private static final SocketOps NOOP = (op, k) -> {};
     private static final Endpoint ENDPOINT =
             new Endpoint("test-policy", "http://localhost", "0.0.0.0", 9000, "test123", 1, "policy", DEFAULT_RESPONSE_VALUE_SEPARATOR);
     private static final MockPolicyRequestHandler HANDLER = new MockPolicyRequestHandler(ENDPOINT);
@@ -41,8 +41,8 @@ class PolicyRequestHandlerTest {
         String firstLine = "a=b\n\n";
 
         ByteBuffer buf = stringBuffer(firstLine);
-        ConnectionState state = HANDLER.createState();
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        ConnectionState state = TestHelper.newState(HANDLER);
+        assertEquals(buf.remaining(), state.read(NOOP, buf));
         List<Param> data = HANDLER.getData();
 
         assertEquals(1, data.size());
@@ -54,8 +54,8 @@ class PolicyRequestHandlerTest {
         String firstLine = "a=b\n\na";
 
         ByteBuffer buf = stringBuffer(firstLine);
-        ConnectionState state = HANDLER.createState();
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        ConnectionState state = TestHelper.newState(HANDLER);
+        assertEquals(buf.remaining(), state.read(NOOP, buf));
         List<Param> data = HANDLER.getData();
 
         assertEquals(1, data.size());
@@ -67,15 +67,15 @@ class PolicyRequestHandlerTest {
         String firstLine = "a=b\n";
         String secondLine = "\n";
 
-        ConnectionState state = HANDLER.createState();
+        ConnectionState state = TestHelper.newState(HANDLER);
         ByteBuffer buf = stringBuffer(firstLine);
 
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        assertEquals(buf.remaining(), state.read(NOOP, buf));
         List<Param> data = HANDLER.getData();
         assertNull(data);
 
         buf = stringBuffer(secondLine);
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        assertEquals(buf.remaining(), state.read(NOOP, buf));
         data = HANDLER.getData();
         assertEquals(singletonList(new Param("a", "b")), data);
     }
@@ -86,20 +86,20 @@ class PolicyRequestHandlerTest {
         String secondLine = "\na";
         String rest = "=c\n\n";
 
-        ConnectionState state = HANDLER.createState();
+        ConnectionState state = TestHelper.newState(HANDLER);
         ByteBuffer buf = stringBuffer(firstLine);
 
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        assertEquals(buf.remaining(), state.read(NOOP, buf));
         assertNull(HANDLER.getData());
 
         buf = stringBuffer(secondLine);
 
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        assertEquals(buf.remaining(), state.read(NOOP, buf));
         assertEquals(singletonList(new Param("a", "b")), HANDLER.getData());
 
         buf = stringBuffer(rest);
 
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
+        assertEquals(buf.remaining(), state.read(NOOP, buf));
         assertEquals(singletonList(new Param("a", "c")), HANDLER.getData());
     }
 

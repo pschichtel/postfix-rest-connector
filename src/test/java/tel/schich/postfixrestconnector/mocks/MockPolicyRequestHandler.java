@@ -17,7 +17,6 @@
  */
 package tel.schich.postfixrestconnector.mocks;
 
-import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,6 +25,7 @@ import org.asynchttpclient.Param;
 
 import tel.schich.postfixrestconnector.Endpoint;
 import tel.schich.postfixrestconnector.PolicyRequestHandler;
+import tel.schich.postfixrestconnector.SocketOps;
 
 public class MockPolicyRequestHandler extends PolicyRequestHandler {
     private List<Param> data;
@@ -35,7 +35,7 @@ public class MockPolicyRequestHandler extends PolicyRequestHandler {
     }
 
     @Override
-    protected void handleRequest(SocketChannel ch, UUID id, List<Param> params) {
+    protected void handleRequest(SocketOps ch, UUID id, List<Param> params) {
         data = params;
         super.handleRequest(ch, id, params);
     }
