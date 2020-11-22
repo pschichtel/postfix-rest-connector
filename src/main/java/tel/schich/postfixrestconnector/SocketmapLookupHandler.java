@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
@@ -63,12 +64,12 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         return new SocketMapConnectionState();
     }
 
-    protected void handleRequest(SocketChannel ch, String requestData) throws IOException {
-        LOGGER.info("Lookup request on endpoint {}: {}", endpoint.getName(), requestData);
+    protected void handleRequest(SocketChannel ch, UUID id, String requestData) throws IOException {
+        LOGGER.info("{} - socketmap-lookup request on endpoint {}: {}", id, endpoint.getName(), requestData);
 
         final int spacePos = requestData.indexOf(' ');
         if (spacePos == -1) {
-            writeBrokenRequestErrorAndClose(ch, "invalid request format");
+            writeBrokenRequestErrorAndClose(ch, id, "invalid request format");
             return;
         }
 
@@ -77,6 +78,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
 
         BoundRequestBuilder prepareRequest = http.prepareGet(endpoint.getTarget())
                 .setHeader("X-Auth-Token", endpoint.getAuthToken())
+                .setHeader("X-Request-Id", id.toString())
                 .addQueryParam("name", name)
                 .addQueryParam("key", lookupKey)
                 .setRequestTimeout(endpoint.getRequestTimeout());
@@ -84,92 +86,95 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
                 if (err != null) {
+                    LOGGER.error("{} - error occurred during request!", id, err);
                     if (err instanceof TimeoutException) {
-                        writeTimeoutError(ch, "REST request timed out: " + err.getMessage());
+                        writeTimeoutError(ch, id, "REST request timed out: " + err.getMessage());
                     } else {
-                        writeTempError(ch, err.getMessage());
+                        writeTempError(ch, id, err.getMessage());
                     }
                     return null;
                 }
 
                 int statusCode = response.getStatusCode();
+                LOGGER.info("{} - received response: {}", id, statusCode);
                 if (statusCode == 200) {
                     // REST call successful -> return data
                     String data = response.getResponseBody();
                     if (data == null) {
-                        LOGGER.warn("No result!");
-                        return writeTempError(ch, "REST result was broken!");
+                        LOGGER.warn("{} - No result!", id);
+                        return writeTempError(ch, id, "REST result was broken!");
                     } else if (data.isEmpty()) {
-                        return writeNotFoundResponse(ch);
+                        return writeNotFoundResponse(ch, id);
                     } else {
                         final List<String> responseValues = LookupResponseHelper.parseResponse(mapper, data);
                         if (responseValues.isEmpty()) {
-                            return writeNotFoundResponse(ch);
+                            return writeNotFoundResponse(ch, id);
                         } else {
-                            LOGGER.info("Response: {}", responseValues);
-                            return writeOkResponse(ch, responseValues, endpoint.getListSeparator());
+                            LOGGER.info("{} - Response: {}", id, responseValues);
+                            return writeOkResponse(ch, id, responseValues, endpoint.getListSeparator());
                         }
                     }
                 } else if (statusCode == 404) {
-                    return writeNotFoundResponse(ch);
+                    return writeNotFoundResponse(ch, id);
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                    writePermError(ch,
+                    writePermError(ch, id,
                             "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
                 } else if (statusCode >= 500 && statusCode < 600) {
                     // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
-                    writeTempError(ch, "REST server had an internal error: " + statusCode);
+                    writeTempError(ch, id, "REST server had an internal error: " + statusCode);
                 } else {
-                    writeTempError(ch, "REST server responded with an unspecified code: " + statusCode);
+                    writeTempError(ch, id, "REST server responded with an unspecified code: " + statusCode);
                 }
             } catch (IOException e) {
-                LOGGER.error("Failed to write response!", e);
+                LOGGER.error("{} - Failed to write response!", id, e);
                 try {
-                    writeTempError(ch, "REST connector encountered a problem!");
+                    writeTempError(ch, id, "REST connector encountered a problem!");
                 } catch (IOException ex) {
-                    LOGGER.error("While recovering from an error failed to write response!", e);
+                    LOGGER.error("{} - While recovering from an error failed to write response!", id, e);
                 }
             }
             return null;
         });
     }
 
-    public static int writeOkResponse(SocketChannel ch, List<String> data, String separator) throws IOException {
-        return writeResponse(ch, "OK " + LookupResponseHelper.encodeResponse(data, separator));
+    public static int writeOkResponse(SocketChannel ch, UUID id, List<String> data, String separator) throws IOException {
+        return writeResponse(ch, id, "OK " + LookupResponseHelper.encodeResponse(data, separator));
     }
 
-    public static int writeNotFoundResponse(SocketChannel ch) throws IOException {
-        return writeResponse(ch, "NOTFOUND ");
+    public static int writeNotFoundResponse(SocketChannel ch, UUID id) throws IOException {
+        return writeResponse(ch, id, "NOTFOUND ");
     }
 
-    public static void writeBrokenRequestErrorAndClose(SocketChannel ch, String reason) throws IOException {
-        writePermError(ch, "Broken request! (" + reason + ")");
+    public static void writeBrokenRequestErrorAndClose(SocketChannel ch, UUID id, String reason) throws IOException {
+        LOGGER.error("{} - broken request: {}", id, reason);
+        writePermError(ch, id, "Broken request! (" + reason + ")");
         ch.close();
     }
 
-    public static int writeTimeoutError(SocketChannel ch, String message) throws IOException {
-        return writeResponse(ch, "TIMEOUT " + message);
+    public static int writeTimeoutError(SocketChannel ch, UUID id, String message) throws IOException {
+        return writeResponse(ch, id, "TIMEOUT " + message);
     }
 
-    public static int writeTempError(SocketChannel ch, String message) throws IOException {
-        return writeResponse(ch, "TEMP " + message);
+    public static int writeTempError(SocketChannel ch, UUID id, String message) throws IOException {
+        return writeResponse(ch, id, "TEMP " + message);
     }
 
-    public static int writePermError(SocketChannel ch, String message) throws IOException {
-        return writeResponse(ch, "PERM " + message);
+    public static int writePermError(SocketChannel ch, UUID id, String message) throws IOException {
+        return writeResponse(ch, id, "PERM " + message);
     }
 
-    public static int writeResponse(SocketChannel ch, String data) throws IOException {
+    public static int writeResponse(SocketChannel ch, UUID id, String data) throws IOException {
         if (data.length() > MAXIMUM_RESPONSE_LENGTH) {
-            throw new IOException("response to long");
+            throw new IOException(id + " - response to long");
         }
         String text = Netstring.compileOne(data);
-        LOGGER.info("Response: {}", text);
+        LOGGER.info("{}  -Response: {}", id, text);
         byte[] payload = text.getBytes(US_ASCII);
         return IOUtil.writeAll(ch, payload);
     }
 
-    private class SocketMapConnectionState implements ConnectionState {
+    private class SocketMapConnectionState  extends BaseConnectionState {
 
         private static final int READ_LENGTH = 1;
 
@@ -198,7 +203,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     } else {
                         int digit = c - '0';
                         if (digit < 0 || digit > 9) {
-                            writeBrokenRequestErrorAndClose(ch, "Expected a digit, but got: " + (char) c);
+                            writeBrokenRequestErrorAndClose(ch, getId(), "Expected a digit, but got: " + (char) c);
                         }
                         length = length * 10 + digit;
                     }
@@ -216,13 +221,13 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     if (c == END) {
                         state = READ_LENGTH;
                         length = 0;
-                        handleRequest(ch, pendingRead.toString());
+                        handleRequest(ch, getId(), pendingRead.toString());
                     } else {
-                        writeBrokenRequestErrorAndClose(ch, "Expected comma, but got: " + (char) c);
+                        writeBrokenRequestErrorAndClose(ch, getId(), "Expected comma, but got: " + (char) c);
                     }
                     break;
                 default:
-                    writeBrokenRequestErrorAndClose(ch, "Reached state " + state + ", but I don't know what to do...");
+                    writeBrokenRequestErrorAndClose(ch, getId(), "Reached state " + state + ", but I don't know what to do...");
                 }
             }
             return bytesRead;

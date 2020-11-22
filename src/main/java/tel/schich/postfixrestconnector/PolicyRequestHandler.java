@@ -24,6 +24,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeoutException;
+
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.BoundRequestBuilder;
 import org.asynchttpclient.Param;
@@ -57,13 +60,14 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         return new PolicyConnectionState();
     }
 
-    protected void handleRequest(SocketChannel ch, List<Param> params) {
+    protected void handleRequest(SocketChannel ch, UUID id, List<Param> params) {
         if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("Policy request on endpoint {}: {}", endpoint.getName(), paramsToString(params));
+            LOGGER.info("{} - Policy request on endpoint {}: {}", id, endpoint.getName(), paramsToString(params));
         }
 
         BoundRequestBuilder prepareRequest = http.preparePost(endpoint.getTarget())
                 .setHeader("X-Auth-Token", endpoint.getAuthToken())
+                .setHeader("X-Request-Id", id.toString())
                 .addHeader("Content-Type", "application/x-www-form-urlencoded")
                 .setFormParams(params)
                 .setRequestTimeout(endpoint.getRequestTimeout());
@@ -71,55 +75,63 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
                 if (err != null) {
-                    writeTemporaryError(ch, err.getMessage());
+                    LOGGER.error("{} - error occurred during request!", id, err);
+                    if (err instanceof TimeoutException) {
+                        writeTemporaryError(ch, id, "REST request timed out: " + err.getMessage());
+                    } else {
+                        writeTemporaryError(ch, id, err.getMessage());
+                    }
                     ch.close();
                     return null;
                 }
 
                 int statusCode = response.getStatusCode();
+                LOGGER.info("{} - received response: {}", id, statusCode);
                 if (statusCode == 200) {
                     // REST call successful -> return data
                     String data = response.getResponseBody();
                     if (data != null) {
                         String trimmed = data.trim();
-                        LOGGER.info("Response: {}", trimmed);
-                        return writeActionResponse(ch, trimmed);
+                        LOGGER.info("{} - Response: {}", id, trimmed);
+                        return writeActionResponse(ch, id, trimmed);
                     } else {
-                        LOGGER.warn("No result!");
-                        return writeTemporaryError(ch, "REST result was broken!");
+                        LOGGER.warn("{} - No result!", id);
+                        return writeTemporaryError(ch, id, "REST result was broken!");
                     }
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                    writePermanentError(ch, "REST server signaled a user error, is the connector misconfigured?");
+                    writePermanentError(ch, id, "REST server signaled a user error, is the connector misconfigured?");
                 } else if (statusCode >= 500 && statusCode < 600) {
                     // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
-                    writeTemporaryError(ch, "REST server had an internal error!");
+                    writeTemporaryError(ch, id, "REST server had an internal error!");
                 }
             } catch (IOException e) {
                 LOGGER.error("Failed to write response!", e);
                 try {
-                    writeTemporaryError(ch, "REST connector encountered a problem!");
+                    writeTemporaryError(ch, id, "REST connector encountered a problem!");
                 } catch (IOException ex) {
-                    LOGGER.error("Wile recovering from an error failed to write response!", e);
+                    LOGGER.error("{} - While recovering from an error failed to write response!", id, e);
                 }
             }
             return null;
         });
     }
 
-    private static int writePermanentError(SocketChannel ch, String message) throws IOException {
-        return writeActionResponse(ch, "554 " + message);
+    private static int writePermanentError(SocketChannel ch, UUID id, String message) throws IOException {
+        LOGGER.error("{} - permanent error: {}", id, message);
+        return writeActionResponse(ch, id, "554 " + message);
     }
 
-    public static int writeTemporaryError(SocketChannel ch, String message) throws IOException {
-        return writeActionResponse(ch, "451 " + message);
+    public static int writeTemporaryError(SocketChannel ch, UUID id, String message) throws IOException {
+        LOGGER.warn("{} - temporary error: {}", id, message);
+        return writeActionResponse(ch, id, "451 " + message);
     }
 
-    public static int writeActionResponse(SocketChannel ch, String action) throws IOException {
+    public static int writeActionResponse(SocketChannel ch, UUID id, String action) throws IOException {
         String text = "action=" + action + LINE_END + LINE_END;
         byte[] payload = text.getBytes(StandardCharsets.US_ASCII);
 
-        LOGGER.info("Response: {}", text);
+        LOGGER.info("{} - Response: {}", id, text);
         return IOUtil.writeAll(ch, payload);
     }
 
@@ -137,7 +149,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         return s.toString();
     }
 
-    private class PolicyConnectionState implements ConnectionState {
+    private class PolicyConnectionState extends BaseConnectionState {
 
         private static final int READ_NAME = 1;
 
@@ -161,7 +173,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                 switch (state) {
                 case READ_NAME:
                     if (c == LINE_END) {
-                        handleRequest(ch, pendingRequest);
+                        handleRequest(ch, getId(), pendingRequest);
                         pendingRequest = new ArrayList<>();
                     } else if (c == '=') {
                         pendingPairName = pendingRead.toString();
@@ -181,7 +193,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                     }
                     break;
                 default:
-                    writePermanentError(ch, "Reached state " + state + ", but I don't know what to do...");
+                    writePermanentError(ch, getId(), "Reached state " + state + ", but I don't know what to do...");
                     ch.close();
                 }
             }

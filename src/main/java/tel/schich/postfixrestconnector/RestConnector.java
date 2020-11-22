@@ -30,6 +30,7 @@ import java.nio.channels.spi.SelectorProvider;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Set;
+
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 import org.slf4j.Logger;
@@ -106,14 +107,15 @@ public class RestConnector implements Closeable {
                 final SelectableChannel channel = key.channel();
 
                 if (key.isAcceptable() && channel instanceof ServerSocketChannel) {
-                    ServerSocketChannel ch = (ServerSocketChannel) channel;
-                    SocketChannel clientChannel = ch.accept();
+                    final ServerSocketChannel ch = (ServerSocketChannel) channel;
+                    final SocketChannel clientChannel = ch.accept();
                     configureChannel(clientChannel);
                     PostfixRequestHandler handler = (PostfixRequestHandler) key.attachment();
-                    Endpoint endpoint = handler.getEndpoint();
-                    clientChannel.register(selector, OP_READ, handler.createState());
-                    SocketAddress remoteAddress = clientChannel.getRemoteAddress();
-                    LOGGER.info("Client connected from {} on endpoint {}", remoteAddress, endpoint.getName());
+                    final Endpoint endpoint = handler.getEndpoint();
+                    final ConnectionState state = handler.createState();
+                    clientChannel.register(selector, OP_READ, state);
+                    final SocketAddress remoteAddress = clientChannel.getRemoteAddress();
+                    LOGGER.info("{} - Client connected from {} on endpoint {}", state.getId(), remoteAddress, endpoint.getName());
                     continue;
                 }
 
@@ -157,7 +159,7 @@ public class RestConnector implements Closeable {
         try {
             bytesRead = ch.read(buffer);
         } catch (IOException e) {
-            LOGGER.error("Channel Read failed!", e);
+            LOGGER.error("{} - Channel Read failed!", state.getId(), e);
             bytesRead = -1;
         }
         if (bytesRead == -1) {

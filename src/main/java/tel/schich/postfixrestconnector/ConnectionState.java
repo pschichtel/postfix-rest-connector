@@ -21,7 +21,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.UUID;
 
 public interface ConnectionState extends Closeable {
+    UUID getId();
     long read(SocketChannel ch, ByteBuffer buffer) throws IOException;
 }

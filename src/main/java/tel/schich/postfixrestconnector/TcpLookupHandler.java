@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -66,11 +67,11 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         return new TcpConnectionState();
     }
 
-    private void handleRequest(SocketChannel ch, String rawRequest) throws IOException {
-        LOGGER.info("Lookup request on endpoint {}: {}", endpoint.getName(), rawRequest);
+    private void handleRequest(SocketChannel ch, UUID id, String rawRequest) throws IOException {
+        LOGGER.info("{} - tcp-lookup request on endpoint {}: {}", id, endpoint.getName(), rawRequest);
 
         if (rawRequest.length() <= LOOKUP_PREFIX.length() || !rawRequest.startsWith(LOOKUP_PREFIX)) {
-            writeError(ch, "Broken request!");
+            writeError(ch, id, "Broken request!");
             ch.close();
             return;
         }
@@ -79,86 +80,89 @@ public class TcpLookupHandler implements PostfixRequestHandler {
 
         BoundRequestBuilder prepareRequest = http.prepareGet(endpoint.getTarget())
                 .setHeader("X-Auth-Token", endpoint.getAuthToken())
+                .setHeader("X-Request-Id", id.toString())
                 .addQueryParam("key", lookupKey)
                 .setRequestTimeout(endpoint.getRequestTimeout());
 
         prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
             try {
                 if (err != null) {
+                    LOGGER.error("{} - error occurred during request!", id, err);
                     if (err instanceof TimeoutException) {
-                        writeError(ch, "REST request timed out: " + err.getMessage());
+                        writeError(ch, id, "REST request timed out: " + err.getMessage());
                     } else {
-                        writeError(ch, err.getMessage());
+                        writeError(ch, id, err.getMessage());
                     }
                     return null;
                 }
 
                 int statusCode = response.getStatusCode();
+                LOGGER.info("{} - received response: {}", id, statusCode);
                 if (statusCode == 200) {
                     // REST call successful -> return data
                     String data = response.getResponseBody();
                     if (data == null) {
-                        LOGGER.warn("No result!");
-                        return writeError(ch, "REST result was broken!");
+                        LOGGER.warn("{} - No result!", id);
+                        return writeError(ch, id, "REST result was broken!");
                     } else if (data.isEmpty()) {
-                        return writeNotFoundResponse(ch);
+                        return writeNotFoundResponse(ch, id);
                     } else {
                         final List<String> responseValues = LookupResponseHelper.parseResponse(mapper, data);
                         if (responseValues.isEmpty()) {
-                            return writeNotFoundResponse(ch);
+                            return writeNotFoundResponse(ch, id);
                         } else {
-                            LOGGER.info("Response: {}", responseValues);
-                            return writeSuccessfulResponse(ch, responseValues, endpoint.getListSeparator());
+                            LOGGER.info("{} - Response: {}", id, responseValues);
+                            return writeSuccessfulResponse(ch, id, responseValues, endpoint.getListSeparator());
                         }
                     }
                 } else if (statusCode == 404) {
-                    return writeNotFoundResponse(ch);
+                    return writeNotFoundResponse(ch, id);
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                    writeError(ch,
+                    writeError(ch, id,
                             "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
                 } else if (statusCode >= 500 && statusCode < 600) {
                     // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
-                    writeError(ch, "REST server had an internal error: " + statusCode);
+                    writeError(ch, id, "REST server had an internal error: " + statusCode);
                 } else {
-                    writeError(ch, "REST server responded with an unspecified code: " + statusCode);
+                    writeError(ch, id, "REST server responded with an unspecified code: " + statusCode);
                 }
             } catch (IOException e) {
-                LOGGER.error("Failed to write response!", e);
+                LOGGER.error("{} - Failed to write response!", id, e);
                 try {
-                    writeError(ch, "REST connector encountered a problem!");
+                    writeError(ch, id, "REST connector encountered a problem!");
                 } catch (IOException ex) {
-                    LOGGER.error("While recovering from an error failed to write response!", e);
+                    LOGGER.error("{} - While recovering from an error failed to write response!", id, e);
                 }
             }
             return null;
         });
     }
 
-    public static int writeSuccessfulResponse(SocketChannel ch, List<String> data, String separator)
+    public static int writeSuccessfulResponse(SocketChannel ch, UUID id, List<String> data, String separator)
             throws IOException {
-        return writeResponse(ch, 200, LookupResponseHelper.encodeResponse(data, separator));
+        return writeResponse(ch, id, 200, LookupResponseHelper.encodeResponse(data, separator));
     }
 
-    public static int writeNotFoundResponse(SocketChannel ch) throws IOException {
-        return writeResponse(ch, 500, "key not found");
+    public static int writeNotFoundResponse(SocketChannel ch, UUID id) throws IOException {
+        return writeResponse(ch, id, 500, "key not found");
     }
 
-    public static int writeError(SocketChannel ch, String message) throws IOException {
-        return writeResponse(ch, 400, message);
+    public static int writeError(SocketChannel ch, UUID id, String message) throws IOException {
+        return writeResponse(ch, id, 400, message);
     }
 
-    public static int writeResponse(SocketChannel ch, int code, String data) throws IOException {
+    public static int writeResponse(SocketChannel ch, UUID id, int code, String data) throws IOException {
         String text = String.valueOf(code) + ' ' + encodeResponseData(data) + END;
         byte[] payload = text.getBytes(US_ASCII);
         if (payload.length > MAXIMUM_RESPONSE_LENGTH) {
-            throw new IOException("response to long");
+            throw new IOException(id + " - response to long");
         }
-        LOGGER.info("Response: {}", text);
+        LOGGER.info("{} - Response: {}", id, text);
         return IOUtil.writeAll(ch, payload);
     }
 
-    private class TcpConnectionState implements ConnectionState {
+    private class TcpConnectionState extends BaseConnectionState {
         private StringBuilder pendingRead = new StringBuilder();
 
         @Override
@@ -168,7 +172,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                 final byte c = buffer.get();
                 bytesRead++;
                 if (c == END) {
-                    handleRequest(ch, pendingRead.toString());
+                    handleRequest(ch, getId(), pendingRead.toString());
                     pendingRead.setLength(0);
                 } else {
                     pendingRead.append((char) c);
