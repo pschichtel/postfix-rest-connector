@@ -175,11 +175,11 @@ public class TcpLookupHandler implements PostfixRequestHandler {
     }
 
     public static int writeNotFoundResponse(SocketChannel ch, UUID id) throws IOException {
-        return writeResponse(ch, id, 500, "key not found");
+        return writeResponse(ch, id, 500, id + " - key not found");
     }
 
     public static int writeError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, 400, message);
+        return writeResponse(ch, id, 400, id + " - " + message);
     }
 
     public static int writeResponse(SocketChannel ch, UUID id, int code, String data) throws IOException {

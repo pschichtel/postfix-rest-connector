@@ -162,15 +162,15 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
     }
 
     public static int writeTimeoutError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, "TIMEOUT " + message);
+        return writeResponse(ch, id, "TIMEOUT " + id + " - " + message);
     }
 
     public static int writeTempError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, "TEMP " + message);
+        return writeResponse(ch, id, "TEMP " + id + " - " + message);
     }
 
     public static int writePermError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, "PERM " + message);
+        return writeResponse(ch, id, "PERM " + id + " - " + message);
     }
 
     public static int writeResponse(SocketChannel ch, UUID id, String data) throws IOException {

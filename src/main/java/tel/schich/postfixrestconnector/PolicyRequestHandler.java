@@ -126,12 +126,12 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
 
     private static int writePermanentError(SocketChannel ch, UUID id, String message) throws IOException {
         LOGGER.error("{} - permanent error: {}", id, message);
-        return writeActionResponse(ch, id, "554 " + message);
+        return writeActionResponse(ch, id, "554 " + id + " - " + message);
     }
 
     public static int writeTemporaryError(SocketChannel ch, UUID id, String message) throws IOException {
         LOGGER.warn("{} - temporary error: {}", id, message);
-        return writeActionResponse(ch, id, "451 " + message);
+        return writeActionResponse(ch, id, "451 " + id + " - " + message);
     }
 
     public static int writeActionResponse(SocketChannel ch, UUID id, String action) throws IOException {
