@@ -23,6 +23,8 @@ import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import static java.util.Objects.requireNonNullElse;
+
 public final class Endpoint {
     private final String name;
 
@@ -52,20 +54,12 @@ public final class Endpoint {
 
         this.name = name;
         this.target = target;
-        if (bindAddress == null) {
-            this.bindAddress = "127.0.0.1";
-        } else {
-            this.bindAddress = bindAddress;
-        }
+        this.bindAddress = requireNonNullElse(bindAddress, "127.0.0.1");
         this.bindPort = bindPort;
         this.authToken = authToken;
         this.requestTimeout = requestTimeout;
         this.mode = mode.toLowerCase();
-        if (listSeparator == null) {
-            this.listSeparator = LookupResponseHelper.DEFAULT_RESPONSE_VALUE_SEPARATOR;
-        } else {
-            this.listSeparator = listSeparator;
-        }
+        this.listSeparator = requireNonNullElse(listSeparator, LookupResponseHelper.DEFAULT_RESPONSE_VALUE_SEPARATOR);
     }
 
     public String getTarget() {

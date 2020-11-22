@@ -25,8 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public class LookupResponseHelper {
-    private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<List<String>>() {
-    };
+    private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<>() {};
 
     public static final String DEFAULT_RESPONSE_VALUE_SEPARATOR = ",";
 

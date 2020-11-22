@@ -17,8 +17,45 @@
  */
 package tel.schich.postfixrestconnector;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static java.net.URLEncoder.encode;
+import static java.nio.charset.StandardCharsets.US_ASCII;
+
 public interface PostfixRequestHandler {
     Endpoint getEndpoint();
 
     ConnectionState createState();
+
+    static URI appendQueryString(URI uri, Map<String, String> pairs) throws IOException {
+        String additionalQuery = formUrlEncode(pairs.entrySet());
+
+        final String finalQuery;
+        final String oldQuery = uri.getRawQuery();
+        if (oldQuery == null || oldQuery.isEmpty()) {
+            finalQuery = additionalQuery;
+        } else {
+            finalQuery = oldQuery + "&" + additionalQuery;
+        }
+        try {
+            return new URI(uri.getScheme(),
+                    uri.getUserInfo(),
+                    uri.getHost(),
+                    uri.getPort(),
+                    uri.getPath(),
+                    finalQuery,
+                    uri.getFragment());
+        } catch (URISyntaxException e) {
+            throw new IOException("failed to append query string", e);
+        }
+    }
+    static String formUrlEncode(Collection<Map.Entry<String, String>> params) {
+        return params.stream().map(p -> encode(p.getKey(), US_ASCII) + "=" + encode(p.getValue(), US_ASCII))
+                .collect(Collectors.joining("&"));
+    }
 }

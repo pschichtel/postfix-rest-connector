@@ -17,31 +17,30 @@
  */
 package tel.schich.postfixrestconnector.mocks;
 
+import java.net.http.HttpClient;
 import java.nio.channels.SocketChannel;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-
-import org.asynchttpclient.Dsl;
-import org.asynchttpclient.Param;
 
 import tel.schich.postfixrestconnector.Endpoint;
 import tel.schich.postfixrestconnector.PolicyRequestHandler;
 
 public class MockPolicyRequestHandler extends PolicyRequestHandler {
-    private List<Param> data;
+    private List<Map.Entry<String, String>> data;
 
     public MockPolicyRequestHandler(Endpoint endpoint) {
-        super(endpoint, Dsl.asyncHttpClient());
+        super(endpoint, HttpClient.newHttpClient(), "test");
     }
 
     @Override
-    protected void handleRequest(SocketChannel ch, UUID id, List<Param> params) {
+    protected void handleRequest(SocketChannel ch, UUID id, List<Map.Entry<String, String>> params) {
         data = params;
         super.handleRequest(ch, id, params);
     }
 
-    public List<Param> getData() {
-        List<Param> copy = this.data;
+    public List<Map.Entry<String, String>> getData() {
+        List<Map.Entry<String, String>> copy = this.data;
         this.data = null;
         return copy;
     }

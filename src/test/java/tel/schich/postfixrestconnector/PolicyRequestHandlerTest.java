@@ -20,7 +20,8 @@ package tel.schich.postfixrestconnector;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import org.asynchttpclient.Param;
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 import tel.schich.postfixrestconnector.mocks.MockPolicyRequestHandler;
@@ -43,10 +44,10 @@ class PolicyRequestHandlerTest {
         ByteBuffer buf = stringBuffer(firstLine);
         ConnectionState state = HANDLER.createState();
         assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        List<Param> data = HANDLER.getData();
+        List<Map.Entry<String, String>> data = HANDLER.getData();
 
         assertEquals(1, data.size());
-        assertEquals(data.get(0), new Param("a", "b"));
+        assertEquals(data.get(0), Map.entry("a", "b"));
     }
 
     @Test
@@ -56,10 +57,10 @@ class PolicyRequestHandlerTest {
         ByteBuffer buf = stringBuffer(firstLine);
         ConnectionState state = HANDLER.createState();
         assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        List<Param> data = HANDLER.getData();
+        List<Map.Entry<String, String>> data = HANDLER.getData();
 
         assertEquals(1, data.size());
-        assertEquals(data.get(0), new Param("a", "b"));
+        assertEquals(data.get(0), Map.entry("a", "b"));
     }
 
     @Test
@@ -71,13 +72,13 @@ class PolicyRequestHandlerTest {
         ByteBuffer buf = stringBuffer(firstLine);
 
         assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        List<Param> data = HANDLER.getData();
+        List<Map.Entry<String, String>> data = HANDLER.getData();
         assertNull(data);
 
         buf = stringBuffer(secondLine);
         assertEquals(buf.remaining(), state.read(DEFAULT, buf));
         data = HANDLER.getData();
-        assertEquals(singletonList(new Param("a", "b")), data);
+        assertEquals(singletonList(Map.entry("a", "b")), data);
     }
 
     @Test
@@ -95,12 +96,12 @@ class PolicyRequestHandlerTest {
         buf = stringBuffer(secondLine);
 
         assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        assertEquals(singletonList(new Param("a", "b")), HANDLER.getData());
+        assertEquals(singletonList(Map.entry("a", "b")), HANDLER.getData());
 
         buf = stringBuffer(rest);
 
         assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        assertEquals(singletonList(new Param("a", "c")), HANDLER.getData());
+        assertEquals(singletonList(Map.entry("a", "c")), HANDLER.getData());
     }
 
 }

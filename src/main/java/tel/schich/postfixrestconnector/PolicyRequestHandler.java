@@ -18,20 +18,21 @@
 package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.UUID;
+import java.time.Duration;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
-import org.asynchttpclient.AsyncHttpClient;
-import org.asynchttpclient.BoundRequestBuilder;
-import org.asynchttpclient.Param;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static tel.schich.postfixrestconnector.PostfixRequestHandler.formUrlEncode;
 
 public class PolicyRequestHandler implements PostfixRequestHandler {
 
@@ -43,11 +44,13 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
 
     private final Endpoint endpoint;
 
-    private final AsyncHttpClient http;
+    private final HttpClient http;
+    private final String userAgent;
 
-    public PolicyRequestHandler(Endpoint endpoint, AsyncHttpClient http) {
+    public PolicyRequestHandler(Endpoint endpoint, HttpClient http, String userAgent) {
         this.endpoint = endpoint;
         this.http = http;
+        this.userAgent = userAgent;
     }
 
     @Override
@@ -60,19 +63,23 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         return new PolicyConnectionState();
     }
 
-    protected void handleRequest(SocketChannel ch, UUID id, List<Param> params) {
+    protected void handleRequest(SocketChannel ch, UUID id, List<Map.Entry<String, String>> params) {
         if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("{} - Policy request on endpoint {}: {}", id, endpoint.getName(), paramsToString(params));
+            LOGGER.info("{} - Policy request on endpoint {}: {}", id, endpoint.getName(), formUrlEncode(params));
         }
 
-        BoundRequestBuilder prepareRequest = http.preparePost(endpoint.getTarget())
-                .setHeader("X-Auth-Token", endpoint.getAuthToken())
-                .setHeader("X-Request-Id", id.toString())
-                .addHeader("Content-Type", "application/x-www-form-urlencoded")
-                .setFormParams(params)
-                .setRequestTimeout(endpoint.getRequestTimeout());
+        final URI uri = URI.create(endpoint.getTarget());
+        final HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .method("POST", HttpRequest.BodyPublishers.ofString(formUrlEncode(params)))
+                .header("User-Agent", userAgent)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("X-Auth-Token", endpoint.getAuthToken())
+                .header("X-Request-Id", id.toString())
+                .timeout(Duration.ofMillis(endpoint.getRequestTimeout()))
+                .build();
 
-        prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).handle((response, err) -> {
             try {
                 if (err != null) {
                     LOGGER.error("{} - error occurred during request!", id, err);
@@ -85,11 +92,11 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                     return null;
                 }
 
-                int statusCode = response.getStatusCode();
+                int statusCode = response.statusCode();
                 LOGGER.info("{} - received response: {}", id, statusCode);
                 if (statusCode == 200) {
                     // REST call successful -> return data
-                    String data = response.getResponseBody();
+                    String data = response.body();
                     if (data != null) {
                         String trimmed = data.trim();
                         LOGGER.info("{} - Response: {}", id, trimmed);
@@ -135,20 +142,6 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         return IOUtil.writeAll(ch, payload);
     }
 
-    private static String paramsToString(List<Param> params) {
-        StringBuilder s = new StringBuilder();
-        Iterator<Param> it = params.iterator();
-        if (it.hasNext()) {
-            Param p = it.next();
-            s.append(p.getName()).append('=').append(p.getValue());
-            while (it.hasNext()) {
-                p = it.next();
-                s.append(", ").append(p.getName()).append('=').append(p.getValue());
-            }
-        }
-        return s.toString();
-    }
-
     private class PolicyConnectionState extends BaseConnectionState {
 
         private static final int READ_NAME = 1;
@@ -161,7 +154,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
 
         private StringBuilder pendingRead = new StringBuilder();
 
-        private List<Param> pendingRequest = new ArrayList<>();
+        private List<Map.Entry<String, String>> pendingRequest = new ArrayList<>();
 
         @Override
         public long read(SocketChannel ch, ByteBuffer buffer) throws IOException {
@@ -185,7 +178,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                     break;
                 case READ_VALUE:
                     if (c == LINE_END) {
-                        pendingRequest.add(new Param(pendingPairName, pendingRead.toString()));
+                        pendingRequest.add(Map.entry(pendingPairName, pendingRead.toString()));
                         pendingRead.setLength(0);
                         state = READ_NAME;
                     } else {

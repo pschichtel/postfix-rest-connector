@@ -18,19 +18,24 @@
 package tel.schich.postfixrestconnector;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.asynchttpclient.AsyncHttpClient;
-import org.asynchttpclient.BoundRequestBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static tel.schich.postfixrestconnector.PostfixRequestHandler.appendQueryString;
 
 public class SocketmapLookupHandler implements PostfixRequestHandler {
 
@@ -44,14 +49,16 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
 
     private final Endpoint endpoint;
 
-    private final AsyncHttpClient http;
+    private final HttpClient http;
 
     private final ObjectMapper mapper;
+    private final String userAgent;
 
-    public SocketmapLookupHandler(Endpoint endpoint, AsyncHttpClient http, ObjectMapper mapper) {
+    public SocketmapLookupHandler(Endpoint endpoint, HttpClient http, ObjectMapper mapper, String userAgent) {
         this.endpoint = endpoint;
         this.http = http;
         this.mapper = mapper;
+        this.userAgent = userAgent;
     }
 
     @Override
@@ -76,14 +83,16 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         final String name = PostfixProtocol.decodeURLEncodedData(requestData.substring(0, spacePos));
         final String lookupKey = PostfixProtocol.decodeURLEncodedData(requestData.substring(spacePos + 1));
 
-        BoundRequestBuilder prepareRequest = http.prepareGet(endpoint.getTarget())
-                .setHeader("X-Auth-Token", endpoint.getAuthToken())
-                .setHeader("X-Request-Id", id.toString())
-                .addQueryParam("name", name)
-                .addQueryParam("key", lookupKey)
-                .setRequestTimeout(endpoint.getRequestTimeout());
+        final URI uri = appendQueryString(URI.create(endpoint.getTarget()), Map.of("name", name, "key", lookupKey));
+        final HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .header("User-Agent", userAgent)
+                .header("X-Auth-Token", endpoint.getAuthToken())
+                .header("X-Request-Id", id.toString())
+                .timeout(Duration.ofMillis(endpoint.getRequestTimeout()))
+                .build();
 
-        prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).handle((response, err) -> {
             try {
                 if (err != null) {
                     LOGGER.error("{} - error occurred during request!", id, err);
@@ -95,11 +104,11 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     return null;
                 }
 
-                int statusCode = response.getStatusCode();
+                int statusCode = response.statusCode();
                 LOGGER.info("{} - received response: {}", id, statusCode);
                 if (statusCode == 200) {
                     // REST call successful -> return data
-                    String data = response.getResponseBody();
+                    String data = response.body();
                     if (data == null) {
                         LOGGER.warn("{} - No result!", id);
                         return writeTempError(ch, id, "REST result was broken!");

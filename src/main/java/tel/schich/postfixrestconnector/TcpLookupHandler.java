@@ -18,20 +18,23 @@
 package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.List;
-import java.util.UUID;
+import java.time.Duration;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.asynchttpclient.AsyncHttpClient;
-import org.asynchttpclient.BoundRequestBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static tel.schich.postfixrestconnector.PostfixProtocol.*;
+import static tel.schich.postfixrestconnector.PostfixRequestHandler.appendQueryString;
 
 public class TcpLookupHandler implements PostfixRequestHandler {
 
@@ -47,14 +50,16 @@ public class TcpLookupHandler implements PostfixRequestHandler {
 
     private final Endpoint endpoint;
 
-    private final AsyncHttpClient http;
+    private final HttpClient http;
 
     private final ObjectMapper mapper;
+    private final String userAgent;
 
-    public TcpLookupHandler(Endpoint endpoint, AsyncHttpClient http, ObjectMapper mapper) {
+    public TcpLookupHandler(Endpoint endpoint, HttpClient http, ObjectMapper mapper, String userAgent) {
         this.endpoint = endpoint;
         this.http = http;
         this.mapper = mapper;
+        this.userAgent = userAgent;
     }
 
     @Override
@@ -65,6 +70,26 @@ public class TcpLookupHandler implements PostfixRequestHandler {
     @Override
     public ConnectionState createState() {
         return new TcpConnectionState();
+    }
+
+    private static void printRequest(UUID id, HttpRequest req) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(req.method());
+        sb.append(' ');
+        sb.append(req.uri().toASCIIString());
+
+        for (Map.Entry<String, List<String>> values : req.headers().map().entrySet()) {
+            for (String value : values.getValue()) {
+                sb.append('\n');
+                sb.append(values.getKey());
+                sb.append(": ");
+                sb.append(value);
+            }
+        }
+        sb.append("\n\n");
+        req.bodyPublisher().ifPresent(publisher -> sb.append("<body>"));
+
+        LOGGER.info("Request of {}:\n{}", id, sb);
     }
 
     private void handleRequest(SocketChannel ch, UUID id, String rawRequest) throws IOException {
@@ -78,13 +103,18 @@ public class TcpLookupHandler implements PostfixRequestHandler {
 
         String lookupKey = PostfixProtocol.decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());
 
-        BoundRequestBuilder prepareRequest = http.prepareGet(endpoint.getTarget())
-                .setHeader("X-Auth-Token", endpoint.getAuthToken())
-                .setHeader("X-Request-Id", id.toString())
-                .addQueryParam("key", lookupKey)
-                .setRequestTimeout(endpoint.getRequestTimeout());
+        final URI uri = appendQueryString(URI.create(endpoint.getTarget()), Map.of("key", lookupKey));
+        final HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .header("User-Agent", userAgent)
+                .header("X-Auth-Token", endpoint.getAuthToken())
+                .header("X-Request-Id", id.toString())
+                .timeout(Duration.ofMillis(endpoint.getRequestTimeout()))
+                .build();
 
-        prepareRequest.execute().toCompletableFuture().handleAsync((response, err) -> {
+        printRequest(id, request);
+
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).handle((response, err) -> {
             try {
                 if (err != null) {
                     LOGGER.error("{} - error occurred during request!", id, err);
@@ -96,11 +126,11 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                     return null;
                 }
 
-                int statusCode = response.getStatusCode();
+                int statusCode = response.statusCode();
                 LOGGER.info("{} - received response: {}", id, statusCode);
                 if (statusCode == 200) {
                     // REST call successful -> return data
-                    String data = response.getResponseBody();
+                    String data = response.body();
                     if (data == null) {
                         LOGGER.warn("{} - No result!", id);
                         return writeError(ch, id, "REST result was broken!");

@@ -20,6 +20,7 @@ package tel.schich.postfixrestconnector;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
@@ -31,8 +32,6 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.asynchttpclient.AsyncHttpClient;
-import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,7 +39,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import static java.net.StandardSocketOptions.TCP_NODELAY;
 import static java.nio.channels.SelectionKey.OP_ACCEPT;
 import static java.nio.channels.SelectionKey.OP_READ;
-import static org.asynchttpclient.Dsl.asyncHttpClient;
 
 public class RestConnector implements Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(RestConnector.class);
@@ -66,7 +64,7 @@ public class RestConnector implements Closeable {
 
         selector = provider.openSelector();
         final ByteBuffer buffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
-        final AsyncHttpClient restClient = getConfiguredClient(config);
+        final HttpClient restClient = HttpClient.newHttpClient();
 
         for (Endpoint endpoint : config.getEndpoints()) {
             final ServerSocketChannel serverChannel = provider.openServerSocketChannel();
@@ -74,13 +72,13 @@ public class RestConnector implements Closeable {
             final PostfixRequestHandler request;
             switch (endpoint.getMode()) {
             case TcpLookupHandler.MODE_NAME:
-                request = new TcpLookupHandler(endpoint, restClient, mapper);
+                request = new TcpLookupHandler(endpoint, restClient, mapper, config.getUserAgent());
                 break;
             case SocketmapLookupHandler.MODE_NAME:
-                request = new SocketmapLookupHandler(endpoint, restClient, mapper);
+                request = new SocketmapLookupHandler(endpoint, restClient, mapper, config.getUserAgent());
                 break;
             case PolicyRequestHandler.MODE_NAME:
-                request = new PolicyRequestHandler(endpoint, restClient);
+                request = new PolicyRequestHandler(endpoint, restClient, config.getUserAgent());
                 break;
             default:
                 throw new IllegalArgumentException("Unknown mode " + endpoint.getMode() + "!");
@@ -177,13 +175,6 @@ public class RestConnector implements Closeable {
             SocketChannel sch = (SocketChannel) ch;
             sch.setOption(TCP_NODELAY, true);
         }
-    }
-
-    private static AsyncHttpClient getConfiguredClient(Configuration config) {
-        DefaultAsyncHttpClientConfig.Builder builder = new DefaultAsyncHttpClientConfig.Builder()
-                .setUserAgent(config.getUserAgent());
-
-        return asyncHttpClient(builder);
     }
 
 }
