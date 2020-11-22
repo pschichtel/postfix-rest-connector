@@ -178,7 +178,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
             throw new IOException(id + " - response to long");
         }
         String text = Netstring.compileOne(data);
-        LOGGER.info("{}  -Response: {}", id, text);
+        LOGGER.info("{} - Response: {}", id, text);
         byte[] payload = text.getBytes(US_ASCII);
         return IOUtil.writeAll(ch, payload);
     }
