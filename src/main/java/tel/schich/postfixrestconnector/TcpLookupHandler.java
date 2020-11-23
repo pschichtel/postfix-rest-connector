@@ -19,6 +19,7 @@ package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -29,12 +30,12 @@ import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.client.utils.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static tel.schich.postfixrestconnector.PostfixProtocol.*;
-import static tel.schich.postfixrestconnector.PostfixRequestHandler.appendQueryString;
 
 public class TcpLookupHandler implements PostfixRequestHandler {
 
@@ -102,8 +103,17 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         }
 
         String lookupKey = PostfixProtocol.decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());
+        final URI uri;
+        try {
+            uri = new URIBuilder(endpoint.getTarget())
+                    .addParameter("key", lookupKey)
+                    .build();
+        } catch (URISyntaxException e) {
+            throw new IOException("failed to build URI", e);
+        }
 
-        final URI uri = appendQueryString(URI.create(endpoint.getTarget()), Map.of("key", lookupKey));
+        LOGGER.info("{} - request to: {}", id, uri);
+
         final HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
                 .header("User-Agent", userAgent)

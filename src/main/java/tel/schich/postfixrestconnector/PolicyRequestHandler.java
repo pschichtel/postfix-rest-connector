@@ -19,6 +19,7 @@ package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -29,6 +30,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.http.client.utils.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +70,10 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
             LOGGER.info("{} - Policy request on endpoint {}: {}", id, endpoint.getName(), formUrlEncode(params));
         }
 
-        final URI uri = URI.create(endpoint.getTarget());
+        final URI uri = endpoint.getTarget();
+
+        LOGGER.info("{} - request to: {}", id, uri);
+
         final HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
                 .method("POST", HttpRequest.BodyPublishers.ofString(formUrlEncode(params)))

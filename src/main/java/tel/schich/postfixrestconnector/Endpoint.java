@@ -19,6 +19,7 @@ package tel.schich.postfixrestconnector;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.URI;
 import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -28,7 +29,7 @@ import static java.util.Objects.requireNonNullElse;
 public final class Endpoint {
     private final String name;
 
-    private final String target;
+    private final URI target;
 
     private final String bindAddress;
 
@@ -43,7 +44,7 @@ public final class Endpoint {
     private final String listSeparator;
 
     @JsonCreator
-    public Endpoint(@JsonProperty("name") String name, @JsonProperty("target") String target,
+    public Endpoint(@JsonProperty("name") String name, @JsonProperty("target") URI target,
             @JsonProperty("bind-address") String bindAddress, @JsonProperty("bind-port") int bindPort,
             @JsonProperty("auth-token") String authToken, @JsonProperty("request-timeout") int requestTimeout,
             @JsonProperty("mode") String mode, @JsonProperty("list-separator") String listSeparator) {
@@ -62,7 +63,7 @@ public final class Endpoint {
         this.listSeparator = requireNonNullElse(listSeparator, LookupResponseHelper.DEFAULT_RESPONSE_VALUE_SEPARATOR);
     }
 
-    public String getTarget() {
+    public URI getTarget() {
         return target;
     }
 

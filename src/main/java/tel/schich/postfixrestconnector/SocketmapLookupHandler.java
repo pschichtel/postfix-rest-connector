@@ -18,11 +18,13 @@
 package tel.schich.postfixrestconnector;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.client.utils.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -30,12 +32,10 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static tel.schich.postfixrestconnector.PostfixRequestHandler.appendQueryString;
 
 public class SocketmapLookupHandler implements PostfixRequestHandler {
 
@@ -83,7 +83,18 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         final String name = PostfixProtocol.decodeURLEncodedData(requestData.substring(0, spacePos));
         final String lookupKey = PostfixProtocol.decodeURLEncodedData(requestData.substring(spacePos + 1));
 
-        final URI uri = appendQueryString(URI.create(endpoint.getTarget()), Map.of("name", name, "key", lookupKey));
+        final URI uri;
+        try {
+            uri = new URIBuilder(endpoint.getTarget())
+                    .addParameter("name", name)
+                    .addParameter("key", lookupKey)
+                    .build();
+        } catch (URISyntaxException e) {
+            throw new IOException("failed to build URI", e);
+        }
+
+        LOGGER.info("{} - request to: {}", id, uri);
+
         final HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
                 .header("User-Agent", userAgent)

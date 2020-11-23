@@ -18,6 +18,7 @@
 package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,7 @@ import static tel.schich.postfixrestconnector.mocks.MockSocketChannel.DEFAULT;
 
 class PolicyRequestHandlerTest {
     private static final Endpoint ENDPOINT =
-            new Endpoint("test-policy", "http://localhost", "0.0.0.0", 9000, "test123", 1, "policy", DEFAULT_RESPONSE_VALUE_SEPARATOR);
+            new Endpoint("test-policy", URI.create("http://localhost"), "0.0.0.0", 9000, "test123", 1, "policy", DEFAULT_RESPONSE_VALUE_SEPARATOR);
     private static final MockPolicyRequestHandler HANDLER = new MockPolicyRequestHandler(ENDPOINT);
 
     @Test

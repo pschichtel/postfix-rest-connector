@@ -20,6 +20,7 @@ package tel.schich.postfixrestconnector;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
@@ -33,7 +34,7 @@ import static tel.schich.postfixrestconnector.TestHelper.stringBuffer;
 
 class SocketmapLookupHandlerTest {
     private static final Endpoint ENDPOINT =
-            new Endpoint("test-policy", "http://localhost", "0.0.0.0", 9000, "test123", 1, MODE_NAME, DEFAULT_RESPONSE_VALUE_SEPARATOR);
+            new Endpoint("test-policy", URI.create("http://localhost"), "0.0.0.0", 9000, "test123", 1, MODE_NAME, DEFAULT_RESPONSE_VALUE_SEPARATOR);
     private static final MockSocketmapLookupHandler HANDLER = new MockSocketmapLookupHandler(ENDPOINT);
 
     @Test

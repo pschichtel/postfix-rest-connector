@@ -32,28 +32,6 @@ public interface PostfixRequestHandler {
 
     ConnectionState createState();
 
-    static URI appendQueryString(URI uri, Map<String, String> pairs) throws IOException {
-        String additionalQuery = formUrlEncode(pairs.entrySet());
-
-        final String finalQuery;
-        final String oldQuery = uri.getRawQuery();
-        if (oldQuery == null || oldQuery.isEmpty()) {
-            finalQuery = additionalQuery;
-        } else {
-            finalQuery = oldQuery + "&" + additionalQuery;
-        }
-        try {
-            return new URI(uri.getScheme(),
-                    uri.getUserInfo(),
-                    uri.getHost(),
-                    uri.getPort(),
-                    uri.getPath(),
-                    finalQuery,
-                    uri.getFragment());
-        } catch (URISyntaxException e) {
-            throw new IOException("failed to append query string", e);
-        }
-    }
     static String formUrlEncode(Collection<Map.Entry<String, String>> params) {
         return params.stream().map(p -> encode(p.getKey(), US_ASCII) + "=" + encode(p.getValue(), US_ASCII))
                 .collect(Collectors.joining("&"));
