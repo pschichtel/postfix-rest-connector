@@ -80,8 +80,10 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
             return;
         }
 
-        final String name = PostfixProtocol.decodeURLEncodedData(requestData.substring(0, spacePos));
-        final String lookupKey = PostfixProtocol.decodeURLEncodedData(requestData.substring(spacePos + 1));
+        // splitting at the first space assumes, that map names with spaces cannot be configured in postfix
+        // compared to the TCP lookup, these values are not URL encoded
+        final String name = requestData.substring(0, spacePos);
+        final String lookupKey = requestData.substring(spacePos + 1);
 
         final URI uri;
         try {
