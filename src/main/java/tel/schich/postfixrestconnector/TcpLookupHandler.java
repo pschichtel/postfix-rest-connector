@@ -20,6 +20,8 @@ package tel.schich.postfixrestconnector;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -35,7 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static tel.schich.postfixrestconnector.PostfixProtocol.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class TcpLookupHandler implements PostfixRequestHandler {
 
@@ -48,6 +50,10 @@ public class TcpLookupHandler implements PostfixRequestHandler {
     private static final int MAXIMUM_RESPONSE_LENGTH = 4096;
 
     private static final char END = '\n';
+
+    private static final String PLUS = "+";
+    private static final String PLUS_URL_ENCODED = "%2B";
+    private static final String SPACE_URL_ENCODED = "%20";
 
     private final Endpoint endpoint;
 
@@ -102,7 +108,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
             return;
         }
 
-        String lookupKey = PostfixProtocol.decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());
+        String lookupKey = decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());
         final URI uri;
         try {
             uri = new URIBuilder(endpoint.getTarget())
@@ -200,6 +206,16 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         }
         LOGGER.info("{} - Response: {}", id, text);
         return IOUtil.writeAll(ch, payload);
+    }
+
+    static String decodeURLEncodedData(String data) {
+        return URLDecoder.decode(data.replace(PLUS, PLUS_URL_ENCODED), UTF_8);
+    }
+
+    static String encodeResponseData(String data) {
+        return URLEncoder.encode(data, UTF_8)
+                .replace(PLUS, SPACE_URL_ENCODED)
+                .replace(PLUS_URL_ENCODED, PLUS);
     }
 
     private class TcpConnectionState extends BaseConnectionState {
