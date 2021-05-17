@@ -130,7 +130,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
 
         printRequest(id, request);
 
-        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).handle((response, err) -> {
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, err) -> {
             try {
                 if (err != null) {
                     LOGGER.error("{} - error occurred during request!", id, err);
@@ -139,7 +139,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                     } else {
                         writeError(ch, id, err.getMessage());
                     }
-                    return null;
+                    return;
                 }
 
                 int statusCode = response.statusCode();
@@ -149,20 +149,20 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                     String data = response.body();
                     if (data == null) {
                         LOGGER.warn("{} - No result!", id);
-                        return writeError(ch, id, "REST result was broken!");
+                        writeError(ch, id, "REST result was broken!");
                     } else if (data.isEmpty()) {
-                        return writeNotFoundResponse(ch, id);
+                        writeNotFoundResponse(ch, id);
                     } else {
                         final List<String> responseValues = LookupResponseHelper.parseResponse(mapper, data);
                         if (responseValues.isEmpty()) {
-                            return writeNotFoundResponse(ch, id);
+                            writeNotFoundResponse(ch, id);
                         } else {
                             LOGGER.info("{} - Response: {}", id, responseValues);
-                            return writeSuccessfulResponse(ch, id, responseValues, endpoint.getListSeparator());
+                            writeSuccessfulResponse(ch, id, responseValues, endpoint.getListSeparator());
                         }
                     }
                 } else if (statusCode == 404) {
-                    return writeNotFoundResponse(ch, id);
+                    writeNotFoundResponse(ch, id);
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
                     writeError(ch, id,
@@ -181,7 +181,6 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                     LOGGER.error("{} - While recovering from an error failed to write response!", id, e);
                 }
             }
-            return null;
         });
     }
 

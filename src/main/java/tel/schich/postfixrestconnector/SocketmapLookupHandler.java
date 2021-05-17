@@ -105,7 +105,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                 .timeout(Duration.ofMillis(endpoint.getRequestTimeout()))
                 .build();
 
-        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).handle((response, err) -> {
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, err) -> {
             try {
                 if (err != null) {
                     LOGGER.error("{} - error occurred during request!", id, err);
@@ -114,7 +114,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     } else {
                         writeTempError(ch, id, err.getMessage());
                     }
-                    return null;
+                    return;
                 }
 
                 int statusCode = response.statusCode();
@@ -124,20 +124,20 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     String data = response.body();
                     if (data == null) {
                         LOGGER.warn("{} - No result!", id);
-                        return writeTempError(ch, id, "REST result was broken!");
+                        writeTempError(ch, id, "REST result was broken!");
                     } else if (data.isEmpty()) {
-                        return writeNotFoundResponse(ch, id);
+                        writeNotFoundResponse(ch, id);
                     } else {
                         final List<String> responseValues = LookupResponseHelper.parseResponse(mapper, data);
                         if (responseValues.isEmpty()) {
-                            return writeNotFoundResponse(ch, id);
+                            writeNotFoundResponse(ch, id);
                         } else {
                             LOGGER.info("{} - Response: {}", id, responseValues);
-                            return writeOkResponse(ch, id, responseValues, endpoint.getListSeparator());
+                            writeOkResponse(ch, id, responseValues, endpoint.getListSeparator());
                         }
                     }
                 } else if (statusCode == 404) {
-                    return writeNotFoundResponse(ch, id);
+                    writeNotFoundResponse(ch, id);
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
                     writePermError(ch, id,
@@ -156,7 +156,6 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                     LOGGER.error("{} - While recovering from an error failed to write response!", id, e);
                 }
             }
-            return null;
         });
     }
 

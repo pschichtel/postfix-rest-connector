@@ -84,7 +84,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                 .timeout(Duration.ofMillis(endpoint.getRequestTimeout()))
                 .build();
 
-        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).handle((response, err) -> {
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, err) -> {
             try {
                 if (err != null) {
                     LOGGER.error("{} - error occurred during request!", id, err);
@@ -94,7 +94,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                         writeTemporaryError(ch, id, err.getMessage());
                     }
                     ch.close();
-                    return null;
+                    return;
                 }
 
                 int statusCode = response.statusCode();
@@ -105,10 +105,10 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                     if (data != null) {
                         String trimmed = data.trim();
                         LOGGER.info("{} - Response: {}", id, trimmed);
-                        return writeActionResponse(ch, id, trimmed);
+                        writeActionResponse(ch, id, trimmed);
                     } else {
                         LOGGER.warn("{} - No result!", id);
-                        return writeTemporaryError(ch, id, "REST result was broken!");
+                        writeTemporaryError(ch, id, "REST result was broken!");
                     }
                 } else if (statusCode >= 400 && statusCode < 500) {
                     // REST call failed due to user error -> emit permanent error (connector is misconfigured)
@@ -125,7 +125,6 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                     LOGGER.error("{} - While recovering from an error failed to write response!", id, e);
                 }
             }
-            return null;
         });
     }
 
