@@ -20,5 +20,5 @@ jobs:
       - name: Publish package
         run: mvn compile jib:build
         env:
-          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USER }}
-          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASS }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
