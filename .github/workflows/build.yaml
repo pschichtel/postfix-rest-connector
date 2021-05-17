@@ -13,12 +13,15 @@ jobs:
           java-version: '16'
       - uses: actions/cache@v2
         with:
-          path: ~/.m2/repository
+          path: |
+            ~/.m2/repository
+            ~/jib-base-cache
+            ~/jib-app-cache
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
       - name: Publish package
-        run: mvn compile jib:build
+        run: mvn compile jib:build -Djib.baseImageCache=~/jib-base-cache -Djib.applicationCache=~/jib-app-cache
         env:
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
