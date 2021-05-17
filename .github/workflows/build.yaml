@@ -18,7 +18,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
       - name: Publish package
-        run: mvn jib:build
+        run: mvn compile jib:build
         env:
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USER }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASS }}
