@@ -1,5 +1,5 @@
 /*
- * Postfix REST Connector - A simple TCP server that can be used as tcp lookup for the Postfix mail server.
+ * Postfix REST Connector - A simple TCP server that can be used as tcp lookup, socketmap lookup or policy check server for the Postfix mail server.
  * Copyright © 2018 Phillip Schichtel (phillip@schich.tel)
  *
  * This program is free software: you can redistribute it and/or modify
