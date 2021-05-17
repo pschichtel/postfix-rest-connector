@@ -12,7 +12,7 @@
     <artifactId>postfix-rest-connector</artifactId>
     <version>1.2.0-SNAPSHOT</version>
     <name>Postfix REST Connector</name>
-    <description>A simple TCP server that can be used as tcp lookup for the Postfix mail server.</description>
+    <description>A simple TCP server that can be used as tcp lookup, socketmap lookup or policy check server for the Postfix mail server.</description>
     <url>https://github.com/pschichtel/postfix-rest-connector</url>
     <inceptionYear>2018</inceptionYear>
 
