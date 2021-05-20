@@ -17,29 +17,9 @@
  */
 package tel.schich.postfixrestconnector;
 
-import java.util.Collections;
 import java.util.List;
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class Configuration {
-    private final String userAgent;
-
-    private final List<Endpoint> endpoints;
-
-    @JsonCreator
-    public Configuration(@JsonProperty("user-agent") String userAgent,
-            @JsonProperty("endpoints") List<Endpoint> endpoints) {
-        this.userAgent = userAgent;
-        this.endpoints = Collections.unmodifiableList(endpoints);
-    }
-
-    public String getUserAgent() {
-        return userAgent;
-    }
-
-    public List<Endpoint> getEndpoints() {
-        return endpoints;
-    }
+public record Configuration(@JsonProperty("user-agent") String userAgent, @JsonProperty("endpoints") List<Endpoint> endpoints) {
 
 }

@@ -66,29 +66,21 @@ public class RestConnector implements Closeable {
         final ByteBuffer buffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
         final HttpClient restClient = HttpClient.newHttpClient();
 
-        for (Endpoint endpoint : config.getEndpoints()) {
+        for (Endpoint endpoint : config.endpoints()) {
             final ServerSocketChannel serverChannel = provider.openServerSocketChannel();
 
-            final PostfixRequestHandler request;
-            switch (endpoint.getMode()) {
-            case TcpLookupHandler.MODE_NAME:
-                request = new TcpLookupHandler(endpoint, restClient, mapper, config.getUserAgent());
-                break;
-            case SocketmapLookupHandler.MODE_NAME:
-                request = new SocketmapLookupHandler(endpoint, restClient, mapper, config.getUserAgent());
-                break;
-            case PolicyRequestHandler.MODE_NAME:
-                request = new PolicyRequestHandler(endpoint, restClient, config.getUserAgent());
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown mode " + endpoint.getMode() + "!");
-            }
+            final PostfixRequestHandler request = switch (endpoint.mode()) {
+                case TcpLookupHandler.MODE_NAME -> new TcpLookupHandler(endpoint, restClient, mapper, config.userAgent());
+                case SocketmapLookupHandler.MODE_NAME -> new SocketmapLookupHandler(endpoint, restClient, mapper, config.userAgent());
+                case PolicyRequestHandler.MODE_NAME -> new PolicyRequestHandler(endpoint, restClient, config.userAgent());
+                default -> throw new IllegalArgumentException("Unknown mode " + endpoint.mode() + "!");
+            };
 
-            serverChannel.bind(endpoint.getAddress());
+            serverChannel.bind(endpoint.address());
             configureChannel(serverChannel);
             serverChannel.register(selector, OP_ACCEPT, request);
 
-            LOGGER.info("Bound endpoint {} to address: {}", endpoint.getName(), serverChannel.getLocalAddress());
+            LOGGER.info("Bound endpoint {} to address: {}", endpoint.name(), serverChannel.getLocalAddress());
         }
 
         while (keepPolling) {
@@ -104,8 +96,7 @@ public class RestConnector implements Closeable {
 
                 final SelectableChannel channel = key.channel();
 
-                if (key.isAcceptable() && channel instanceof ServerSocketChannel) {
-                    final ServerSocketChannel ch = (ServerSocketChannel) channel;
+                if (key.isAcceptable() && channel instanceof final ServerSocketChannel ch) {
                     final SocketChannel clientChannel = ch.accept();
                     configureChannel(clientChannel);
                     PostfixRequestHandler handler = (PostfixRequestHandler) key.attachment();
@@ -113,7 +104,7 @@ public class RestConnector implements Closeable {
                     final ConnectionState state = handler.createState();
                     clientChannel.register(selector, OP_READ, state);
                     final SocketAddress remoteAddress = clientChannel.getRemoteAddress();
-                    LOGGER.info("{} - Client connected from {} on endpoint {}", state.getId(), remoteAddress, endpoint.getName());
+                    LOGGER.info("{} - Client connected from {} on endpoint {}", state.getId(), remoteAddress, endpoint.name());
                     continue;
                 }
 
@@ -130,8 +121,7 @@ public class RestConnector implements Closeable {
                     continue;
                 }
 
-                if (key.isReadable() && channel instanceof SocketChannel) {
-                    SocketChannel ch = (SocketChannel) channel;
+                if (key.isReadable() && channel instanceof SocketChannel ch) {
                     ConnectionState state = (ConnectionState) key.attachment();
                     readChannel(ch, buffer, state);
                 }
@@ -171,8 +161,7 @@ public class RestConnector implements Closeable {
 
     private static void configureChannel(SelectableChannel ch) throws IOException {
         ch.configureBlocking(false);
-        if (ch instanceof SocketChannel) {
-            SocketChannel sch = (SocketChannel) ch;
+        if (ch instanceof SocketChannel sch) {
             sch.setOption(TCP_NODELAY, true);
         }
     }

@@ -100,7 +100,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
     }
 
     private void handleRequest(SocketChannel ch, UUID id, String rawRequest) throws IOException {
-        LOGGER.info("{} - tcp-lookup request on endpoint {}: {}", id, endpoint.getName(), rawRequest);
+        LOGGER.info("{} - tcp-lookup request on endpoint {}: {}", id, endpoint.name(), rawRequest);
 
         if (rawRequest.length() <= LOOKUP_PREFIX.length() || !rawRequest.startsWith(LOOKUP_PREFIX)) {
             writeError(ch, id, "Broken request!");
@@ -111,7 +111,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         String lookupKey = decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());
         final URI uri;
         try {
-            uri = new URIBuilder(endpoint.getTarget())
+            uri = new URIBuilder(endpoint.target())
                     .addParameter("key", lookupKey)
                     .build();
         } catch (URISyntaxException e) {
@@ -123,9 +123,9 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         final HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
                 .header("User-Agent", userAgent)
-                .header("X-Auth-Token", endpoint.getAuthToken())
+                .header("X-Auth-Token", endpoint.authToken())
                 .header("X-Request-Id", id.toString())
-                .timeout(Duration.ofMillis(endpoint.getRequestTimeout()))
+                .timeout(Duration.ofMillis(endpoint.requestTimeout()))
                 .build();
 
         printRequest(id, request);
@@ -158,7 +158,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
                             writeNotFoundResponse(ch, id);
                         } else {
                             LOGGER.info("{} - Response: {}", id, responseValues);
-                            writeSuccessfulResponse(ch, id, responseValues, endpoint.getListSeparator());
+                            writeSuccessfulResponse(ch, id, responseValues, endpoint.listSeparator());
                         }
                     }
                 } else if (statusCode == 404) {

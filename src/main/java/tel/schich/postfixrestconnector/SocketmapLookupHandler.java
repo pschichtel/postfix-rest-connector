@@ -72,7 +72,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
     }
 
     protected void handleRequest(SocketChannel ch, UUID id, String requestData) throws IOException {
-        LOGGER.info("{} - socketmap-lookup request on endpoint {}: {}", id, endpoint.getName(), requestData);
+        LOGGER.info("{} - socketmap-lookup request on endpoint {}: {}", id, endpoint.name(), requestData);
 
         final int spacePos = requestData.indexOf(' ');
         if (spacePos == -1) {
@@ -87,7 +87,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
 
         final URI uri;
         try {
-            uri = new URIBuilder(endpoint.getTarget())
+            uri = new URIBuilder(endpoint.target())
                     .addParameter("name", name)
                     .addParameter("key", lookupKey)
                     .build();
@@ -100,9 +100,9 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         final HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
                 .header("User-Agent", userAgent)
-                .header("X-Auth-Token", endpoint.getAuthToken())
+                .header("X-Auth-Token", endpoint.authToken())
                 .header("X-Request-Id", id.toString())
-                .timeout(Duration.ofMillis(endpoint.getRequestTimeout()))
+                .timeout(Duration.ofMillis(endpoint.requestTimeout()))
                 .build();
 
         http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, err) -> {
@@ -133,7 +133,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
                             writeNotFoundResponse(ch, id);
                         } else {
                             LOGGER.info("{} - Response: {}", id, responseValues);
-                            writeOkResponse(ch, id, responseValues, endpoint.getListSeparator());
+                            writeOkResponse(ch, id, responseValues, endpoint.listSeparator());
                         }
                     }
                 } else if (statusCode == 404) {

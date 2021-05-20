@@ -17,9 +17,6 @@
  */
 package tel.schich.postfixrestconnector;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;

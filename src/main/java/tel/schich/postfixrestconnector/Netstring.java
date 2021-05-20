@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Netstring {
+public final class Netstring {
 
     private Netstring() {
     }

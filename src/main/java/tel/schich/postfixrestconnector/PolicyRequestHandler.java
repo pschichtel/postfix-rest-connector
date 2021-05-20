@@ -19,7 +19,6 @@ package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -30,7 +29,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.http.client.utils.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,10 +65,10 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
 
     protected void handleRequest(SocketChannel ch, UUID id, List<Map.Entry<String, String>> params) {
         if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("{} - Policy request on endpoint {}: {}", id, endpoint.getName(), formUrlEncode(params));
+            LOGGER.info("{} - Policy request on endpoint {}: {}", id, endpoint.name(), formUrlEncode(params));
         }
 
-        final URI uri = endpoint.getTarget();
+        final URI uri = endpoint.target();
 
         LOGGER.info("{} - request to: {}", id, uri);
 
@@ -79,9 +77,9 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
                 .method("POST", HttpRequest.BodyPublishers.ofString(formUrlEncode(params)))
                 .header("User-Agent", userAgent)
                 .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("X-Auth-Token", endpoint.getAuthToken())
+                .header("X-Auth-Token", endpoint.authToken())
                 .header("X-Request-Id", id.toString())
-                .timeout(Duration.ofMillis(endpoint.getRequestTimeout()))
+                .timeout(Duration.ofMillis(endpoint.requestTimeout()))
                 .build();
 
         http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, err) -> {

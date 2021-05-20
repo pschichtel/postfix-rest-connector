@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 
-class IOUtil {
+final class IOUtil {
 
     private IOUtil() {
     }
