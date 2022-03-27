@@ -207,7 +207,7 @@
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>3.2.0</version>
                 <configuration>
                     <from>
                         <image>eclipse-temurin:17-jre-alpine@sha256:1e0e02c8fa4bc56ccb4ce96b01d56a146ba5f6b7dd7a54baa0908cd08fe05ddc</image>
