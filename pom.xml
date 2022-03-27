@@ -196,7 +196,7 @@
                         <configuration>
                             <rules>
                                 <requireJavaVersion>
-                                    <version>[16,)</version>
+                                    <version>[17,)</version>
                                 </requireJavaVersion>
                                 <dependencyConvergence />
                             </rules>
@@ -210,7 +210,7 @@
                 <version>3.0.0</version>
                 <configuration>
                     <from>
-                        <image>adoptopenjdk/openjdk16:alpine-jre@sha256:485f58b1e084af00492c3c7704c5b0e223622f8017cbedca8c885bf2136e23bf</image>
+                        <image>eclipse-temurin:17-jre-alpine@sha256:1e0e02c8fa4bc56ccb4ce96b01d56a146ba5f6b7dd7a54baa0908cd08fe05ddc</image>
                     </from>
                     <to>
                         <image>${dockerId}/${project.artifactId}</image>
