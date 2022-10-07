@@ -18,20 +18,20 @@
 package tel.schich.postfixrestconnector;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.client.utils.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
@@ -85,15 +85,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         final String name = requestData.substring(0, spacePos);
         final String lookupKey = requestData.substring(spacePos + 1);
 
-        final URI uri;
-        try {
-            uri = new URIBuilder(endpoint.target())
-                    .addParameter("name", name)
-                    .addParameter("key", lookupKey)
-                    .build();
-        } catch (URISyntaxException e) {
-            throw new IOException("failed to build URI", e);
-        }
+        final URI uri = Util.appendQueryParams(endpoint.target(), Map.of("name", name, "key", lookupKey));
 
         LOGGER.info("{} - request to: {}", id, uri);
 
@@ -192,7 +184,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         String text = Netstring.compileOne(data);
         LOGGER.info("{} - Response: {}", id, text);
         byte[] payload = text.getBytes(US_ASCII);
-        return IOUtil.writeAll(ch, payload);
+        return Util.writeAll(ch, payload);
     }
 
     private class SocketMapConnectionState  extends BaseConnectionState {

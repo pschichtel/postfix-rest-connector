@@ -141,7 +141,7 @@ public class PolicyRequestHandler implements PostfixRequestHandler {
         byte[] payload = text.getBytes(StandardCharsets.US_ASCII);
 
         LOGGER.info("{} - Response: {}", id, text);
-        return IOUtil.writeAll(ch, payload);
+        return Util.writeAll(ch, payload);
     }
 
     private class PolicyConnectionState extends BaseConnectionState {

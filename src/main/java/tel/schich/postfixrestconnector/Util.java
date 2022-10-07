@@ -18,12 +18,19 @@
 package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-final class IOUtil {
+import static java.nio.charset.StandardCharsets.UTF_8;
 
-    private IOUtil() {
+final class Util {
+
+    private Util() {
     }
 
     static int writeAll(WritableByteChannel ch, byte[] payload) throws IOException {
@@ -33,5 +40,18 @@ final class IOUtil {
             bytesWritten += ch.write(buf);
         }
         return bytesWritten;
+    }
+
+    static URI appendQueryParams(URI source, Map<String, String> params) {
+        String existingQuery = source.getQuery();
+        String extraQuery = params.entrySet().stream()
+                .map(e -> URLEncoder.encode(e.getKey(), UTF_8) + "=" + URLEncoder.encode(e.getValue(), UTF_8))
+                .collect(Collectors.joining("&"));
+        String query = (existingQuery == null || existingQuery.isEmpty()) ? extraQuery : existingQuery + "&" + extraQuery;
+        try {
+            return new URI(source.getScheme(), source.getUserInfo(), source.getHost(), source.getPort(), source.getPath(), query, source.getFragment());
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("URI syntax got invalid during query appending!", e);
+        }
     }
 }

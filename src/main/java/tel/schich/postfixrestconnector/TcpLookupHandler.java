@@ -19,7 +19,6 @@ package tel.schich.postfixrestconnector;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -32,7 +31,6 @@ import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.client.utils.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,14 +107,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         }
 
         String lookupKey = decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());
-        final URI uri;
-        try {
-            uri = new URIBuilder(endpoint.target())
-                    .addParameter("key", lookupKey)
-                    .build();
-        } catch (URISyntaxException e) {
-            throw new IOException("failed to build URI", e);
-        }
+        final URI uri = Util.appendQueryParams(endpoint.target(), Map.of("key", lookupKey));
 
         LOGGER.info("{} - request to: {}", id, uri);
 
@@ -204,7 +195,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
             throw new IOException(id + " - response to long");
         }
         LOGGER.info("{} - Response: {}", id, text);
-        return IOUtil.writeAll(ch, payload);
+        return Util.writeAll(ch, payload);
     }
 
     static String decodeURLEncodedData(String data) {
