@@ -32,8 +32,8 @@ public class UtilTest {
             "simply", "param",
             "c+m plicæted!", " param "
         );
-        URI a = URI.create("https://localhost");
 
+        URI a = URI.create("https://localhost");
         assertEquals("https://localhost?simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+", Util.appendQueryParams(a, params).toString());
 
         URI b = URI.create("https://localhost?existing=arg");
