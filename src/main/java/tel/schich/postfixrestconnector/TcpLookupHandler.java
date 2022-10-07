@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static tel.schich.postfixrestconnector.Util.param;
 
 public class TcpLookupHandler implements PostfixRequestHandler {
 
@@ -107,7 +108,7 @@ public class TcpLookupHandler implements PostfixRequestHandler {
         }
 
         String lookupKey = decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length()).trim());
-        final URI uri = Util.appendQueryParams(endpoint.target(), Map.of("key", lookupKey));
+        final URI uri = Util.appendQueryParams(endpoint.target(), List.of(param("key", lookupKey)));
 
         LOGGER.info("{} - request to: {}", id, uri);
 

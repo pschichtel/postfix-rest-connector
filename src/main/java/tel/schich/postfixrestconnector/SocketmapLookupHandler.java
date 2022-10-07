@@ -29,13 +29,12 @@ import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static tel.schich.postfixrestconnector.Util.param;
 
 public class SocketmapLookupHandler implements PostfixRequestHandler {
 
@@ -85,7 +84,7 @@ public class SocketmapLookupHandler implements PostfixRequestHandler {
         final String name = requestData.substring(0, spacePos);
         final String lookupKey = requestData.substring(spacePos + 1);
 
-        final URI uri = Util.appendQueryParams(endpoint.target(), Map.of("name", name, "key", lookupKey));
+        final URI uri = Util.appendQueryParams(endpoint.target(), List.of(param("name", name), param("key", lookupKey)));
 
         LOGGER.info("{} - request to: {}", id, uri);
 

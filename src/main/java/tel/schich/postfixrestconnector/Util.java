@@ -23,7 +23,7 @@ import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
-import java.util.Map;
+import java.util.Collection;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -42,10 +42,17 @@ final class Util {
         return bytesWritten;
     }
 
-    static URI appendQueryParams(URI source, Map<String, String> params) {
+    record Param(String name, String value) {
+    }
+
+    static Param param(String name, String value) {
+        return new Param(name, value);
+    }
+
+    static URI appendQueryParams(URI source, Collection<Param> params) {
         String existingQuery = source.getQuery();
-        String extraQuery = params.entrySet().stream()
-                .map(e -> URLEncoder.encode(e.getKey(), UTF_8) + "=" + URLEncoder.encode(e.getValue(), UTF_8))
+        String extraQuery = params.stream()
+                .map(e -> URLEncoder.encode(e.name(), UTF_8) + "=" + URLEncoder.encode(e.value(), UTF_8))
                 .collect(Collectors.joining("&"));
         String query = (existingQuery == null || existingQuery.isEmpty()) ? extraQuery : existingQuery + "&" + extraQuery;
         try {

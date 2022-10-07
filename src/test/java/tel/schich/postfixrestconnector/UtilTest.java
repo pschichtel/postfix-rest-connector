@@ -20,17 +20,18 @@ package tel.schich.postfixrestconnector;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
-import java.util.Map;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static tel.schich.postfixrestconnector.Util.param;
 
 public class UtilTest {
 
     @Test
     public void appendQueryString() {
-        var params = Map.of(
-            "simply", "param",
-            "c+m plicæted!", " param "
+        var params = List.of(
+            param("simply", "param"),
+            param("c+m plicæted!", " param ")
         );
 
         URI a = URI.create("https://localhost");
