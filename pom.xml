@@ -203,7 +203,7 @@
                 <version>3.3.0</version>
                 <configuration>
                     <from>
-                        <image>eclipse-temurin:17-jre-alpine@sha256:1e0e02c8fa4bc56ccb4ce96b01d56a146ba5f6b7dd7a54baa0908cd08fe05ddc</image>
+                        <image>eclipse-temurin:17-jre-alpine@sha256:59d4181524b05c2f8da60027d70b304e05c60e94fed89ece602d4491516f6b98</image>
                     </from>
                     <to>
                         <image>${dockerId}/${project.artifactId}</image>
