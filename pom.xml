@@ -62,7 +62,7 @@
         <junit.version>5.${junit.minor}.1</junit.version>
         <junit.runner.version>1.${junit.minor}.1</junit.runner.version>
         <releaseProfile>release-postfix-rest-connector</releaseProfile>
-        <javaVersion>16</javaVersion>
+        <javaVersion>17</javaVersion>
         <dockerId>pschichtel</dockerId>
     </properties>
 
