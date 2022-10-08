@@ -15,32 +15,21 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector.mocks;
+package tel.schich.postfixrestconnector.mocks
 
-import java.io.IOException;
-import java.net.http.HttpClient;
-import java.nio.channels.SocketChannel;
-import java.util.UUID;
+import kotlinx.serialization.json.Json
+import tel.schich.postfixrestconnector.Endpoint
+import tel.schich.postfixrestconnector.SocketmapLookupHandler
+import java.net.http.HttpClient.newHttpClient
+import java.nio.channels.SocketChannel
+import java.util.UUID
 
-import kotlinx.serialization.json.Json;
-import org.jetbrains.annotations.NotNull;
-import tel.schich.postfixrestconnector.Endpoint;
-import tel.schich.postfixrestconnector.SocketmapLookupHandler;
+class MockSocketmapLookupHandler(endpoint: Endpoint) : SocketmapLookupHandler(endpoint, newHttpClient(), Json, "test") {
+    var data: String? = null
+        private set
 
-public class MockSocketmapLookupHandler extends SocketmapLookupHandler {
-    private String data;
-
-    public MockSocketmapLookupHandler(Endpoint endpoint) {
-        super(endpoint, HttpClient.newHttpClient(), Json.Default, "test");
-    }
-
-    @Override
-    protected void handleRequest(@NotNull SocketChannel ch, @NotNull UUID id, @NotNull String requestData) throws IOException {
-        data = requestData;
-        super.handleRequest(ch, id, requestData);
-    }
-
-    public String getData() {
-        return data;
+    override fun handleRequest(ch: SocketChannel, id: UUID, requestData: String) {
+        data = requestData
+        super.handleRequest(ch, id, requestData)
     }
 }

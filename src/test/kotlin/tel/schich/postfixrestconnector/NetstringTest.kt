@@ -15,40 +15,42 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-
-import static org.junit.jupiter.api.Assertions.*;
+import tel.schich.postfixrestconnector.Netstring.compile
+import tel.schich.postfixrestconnector.Netstring.compileOne
+import tel.schich.postfixrestconnector.Netstring.parse
+import tel.schich.postfixrestconnector.Netstring.parseOne
+import java.io.IOException
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class NetstringTest {
-
     @Test
-    void parseOne() throws IOException {
-        Throwable t = assertThrows(IOException.class, () -> assertEquals("a", Netstring.parseOne("1:a,2:bc,")));
-        assertNull(t.getCause());
-
-        assertEquals("a", Netstring.parseOne("1:a,"));
+    fun parseOne() {
+        val t = assertFailsWith<IOException> {
+            assertEquals("a", parseOne("1:a,2:bc,"))
+        }
+        assertNull(t.cause)
+        assertEquals("a", parseOne("1:a,"))
     }
 
     @Test
-    void parse() throws IOException {
-        assertEquals(Arrays.asList("a", "bc"), Netstring.parse("1:a,2:bc,"));
+    fun parse() {
+        assertEquals(listOf("a", "bc"), parse("1:a,2:bc,"))
     }
 
     @Test
-    void compile() {
-        assertEquals("0:,", Netstring.compile(Collections.singletonList("")));
-        assertEquals("", Netstring.compile(Collections.emptyList()));
-        assertEquals("1:a,2:bc,", Netstring.compile(Arrays.asList("a", "bc")));
+    fun compile() {
+        assertEquals("0:,", compile(listOf("")))
+        assertEquals("", compile(emptyList()))
+        assertEquals("1:a,2:bc,", compile(listOf("a", "bc")))
     }
 
     @Test
-    void compileOne() {
-        assertEquals("0:,", Netstring.compileOne(""));
+    fun compileOne() {
+        assertEquals("0:,", compileOne(""))
     }
 }

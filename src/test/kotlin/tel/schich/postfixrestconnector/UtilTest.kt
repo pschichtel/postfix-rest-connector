@@ -15,57 +15,52 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
+import java.net.URI
+import java.net.URISyntaxException
+import java.net.URLEncoder
+import kotlin.text.Charsets.UTF_8
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLEncoder;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-public class UtilTest {
-
-    record Param(String name, String value) {
+class UtilTest {
+    @Test
+    fun appendQueryString() {
+        val params = listOf(
+            Pair("simply", "param"),
+            Pair("c+m plicæted!", " param "),
+        )
+        val a = URI.create("https://localhost")
+        Assertions.assertEquals(
+            "https://localhost?simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+",
+            appendQueryParams(a, params).toString()
+        )
+        val b = URI.create("https://localhost?existing=arg")
+        Assertions.assertEquals(
+            "https://localhost?existing=arg&simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+",
+            appendQueryParams(b, params).toString()
+        )
+        val c = URI.create("https://localhost?simply=param")
+        Assertions.assertEquals(
+            "https://localhost?simply=param&simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+",
+            appendQueryParams(c, params).toString()
+        )
     }
 
-    static Param param(String name, String value) {
-        return new Param(name, value);
-    }
-
-    static URI appendQueryParams(URI source, Collection<Param> params) {
-        String existingQuery = source.getQuery();
-        String extraQuery = params.stream()
-                .map(e -> URLEncoder.encode(e.name(), UTF_8) + "=" + URLEncoder.encode(e.value(), UTF_8))
-                .collect(Collectors.joining("&"));
-        String query = (existingQuery == null || existingQuery.isEmpty()) ? extraQuery : existingQuery + "&" + extraQuery;
-        try {
-            return new URI(source.getScheme(), source.getUserInfo(), source.getHost(), source.getPort(), source.getPath(), query, source.getFragment());
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("URI syntax got invalid during query appending!", e);
+    companion object {
+        fun appendQueryParams(source: URI, params: Collection<Pair<String, String>>): URI {
+            val existingQuery = source.query
+            val extraQuery = params.joinToString("&") { (key, value) ->
+                URLEncoder.encode(key, UTF_8) + "=" + URLEncoder.encode(value, UTF_8)
+            }
+            val query =
+                if (existingQuery == null || existingQuery.isEmpty()) extraQuery else "$existingQuery&$extraQuery"
+            return try {
+                URI(source.scheme, source.userInfo, source.host, source.port, source.path, query, source.fragment)
+            } catch (e: URISyntaxException) {
+                throw IllegalArgumentException("URI syntax got invalid during query appending!", e)
+            }
         }
     }
-
-    @Test
-    public void appendQueryString() {
-        var params = List.of(
-            param("simply", "param"),
-            param("c+m plicæted!", " param ")
-        );
-
-        URI a = URI.create("https://localhost");
-        assertEquals("https://localhost?simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+", appendQueryParams(a, params).toString());
-
-        URI b = URI.create("https://localhost?existing=arg");
-        assertEquals("https://localhost?existing=arg&simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+", appendQueryParams(b, params).toString());
-
-        URI c = URI.create("https://localhost?simply=param");
-        assertEquals("https://localhost?simply=param&simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+", appendQueryParams(c, params).toString());
-    }
-
 }

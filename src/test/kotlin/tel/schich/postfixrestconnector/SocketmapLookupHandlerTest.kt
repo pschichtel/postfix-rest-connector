@@ -15,37 +15,37 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-
-import tel.schich.postfixrestconnector.mocks.MockSocketChannel;
-import tel.schich.postfixrestconnector.mocks.MockSocketmapLookupHandler;
-
-import static io.ktor.http.URLUtilsKt.Url;
-import static org.junit.jupiter.api.Assertions.*;
-import static tel.schich.postfixrestconnector.EndpointKt.DEFAULT_RESPONSE_VALUE_SEPARATOR;
-import static tel.schich.postfixrestconnector.SocketmapLookupHandler.MODE_NAME;
-import static tel.schich.postfixrestconnector.TestHelper.stringBuffer;
+import io.ktor.http.Url
+import tel.schich.postfixrestconnector.TestHelper.stringBuffer
+import tel.schich.postfixrestconnector.mocks.MockSocketChannel
+import tel.schich.postfixrestconnector.mocks.MockSocketmapLookupHandler
+import java.nio.channels.SocketChannel
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class SocketmapLookupHandlerTest {
-    private static final Endpoint ENDPOINT =
-            new Endpoint("test-policy", Url("http://localhost"), "0.0.0.0", 9000, "test123", 1, MODE_NAME, DEFAULT_RESPONSE_VALUE_SEPARATOR);
-    private static final MockSocketmapLookupHandler HANDLER = new MockSocketmapLookupHandler(ENDPOINT);
+    private val ENDPOINT = Endpoint(
+        "test-policy",
+        Url("http://localhost"),
+        "0.0.0.0",
+        9000,
+        "test123",
+        1,
+        SocketmapLookupHandler.MODE_NAME,
+        DEFAULT_RESPONSE_VALUE_SEPARATOR
+    )
+    private val HANDLER = MockSocketmapLookupHandler(ENDPOINT)
 
     @Test
-    public void testRequest() throws IOException {
-        final String d = "test 0123456789";
-        final String s = d.length() + ":" + d + ",";
-        final ByteBuffer b = stringBuffer(s);
-        final SocketChannel sc = new MockSocketChannel();
-        ConnectionState state = HANDLER.createState();
-        assertEquals(s.length(), state.read(sc, b));
-        assertEquals(d, HANDLER.getData());
+    fun testRequest() {
+        val d = "test 0123456789"
+        val s = d.length.toString() + ":" + d + ","
+        val b = stringBuffer(s)
+        val sc: SocketChannel = MockSocketChannel()
+        val state = HANDLER.createState()
+        assertEquals(s.length.toLong(), state.read(sc, b))
+        assertEquals(d, HANDLER.data)
     }
-
 }

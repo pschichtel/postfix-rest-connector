@@ -15,13 +15,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 
-public class TestHelper {
-    static ByteBuffer stringBuffer(String s) {
-        return ByteBuffer.wrap(s.getBytes(StandardCharsets.US_ASCII));
+object TestHelper {
+    @JvmStatic
+    fun stringBuffer(s: String): ByteBuffer {
+        return ByteBuffer.wrap(s.toByteArray(StandardCharsets.US_ASCII))
     }
 }

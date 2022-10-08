@@ -15,94 +15,83 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
+import io.ktor.http.Url
+import tel.schich.postfixrestconnector.TestHelper.stringBuffer
+import tel.schich.postfixrestconnector.mocks.MockPolicyRequestHandler
+import tel.schich.postfixrestconnector.mocks.MockSocketChannel
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
-import kotlin.Pair;
-import org.junit.jupiter.api.Test;
-
-import tel.schich.postfixrestconnector.mocks.MockPolicyRequestHandler;
-
-import static io.ktor.http.URLUtilsKt.Url;
-import static java.util.Collections.singletonList;
-import static org.junit.jupiter.api.Assertions.*;
-import static tel.schich.postfixrestconnector.EndpointKt.DEFAULT_RESPONSE_VALUE_SEPARATOR;
-import static tel.schich.postfixrestconnector.TestHelper.stringBuffer;
-import static tel.schich.postfixrestconnector.mocks.MockSocketChannel.DEFAULT;
-
-class PolicyRequestHandlerTest {
-    private static final Endpoint ENDPOINT =
-            new Endpoint("test-policy", Url("http://localhost"), "0.0.0.0", 9000, "test123", 1, "policy", DEFAULT_RESPONSE_VALUE_SEPARATOR);
-    private static final MockPolicyRequestHandler HANDLER = new MockPolicyRequestHandler(ENDPOINT);
-
+internal class PolicyRequestHandlerTest {
+    private val ENDPOINT = Endpoint(
+        "test-policy",
+        Url("http://localhost"),
+        "0.0.0.0",
+        9000,
+        "test123",
+        1,
+        "policy",
+        DEFAULT_RESPONSE_VALUE_SEPARATOR
+    )
+    private val HANDLER = MockPolicyRequestHandler(ENDPOINT)
+    
     @Test
-    void readCompleteRequestComplete() throws IOException {
-        String firstLine = "a=b\n\n";
-
-        ByteBuffer buf = stringBuffer(firstLine);
-        ConnectionState state = HANDLER.createState();
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        List<Pair<String, String>> data = HANDLER.getData();
-
-        assertEquals(1, data.size());
-        assertEquals(data.get(0), new Pair<>("a", "b"));
+    fun readCompleteRequestComplete() {
+        val firstLine = "a=b\n\n"
+        val buf = stringBuffer(firstLine)
+        val state = HANDLER.createState()
+        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        val data = HANDLER.getData()
+        assertNotNull(data)
+        assertEquals(1, data.size)
+        assertEquals(data[0], Pair("a", "b"))
     }
 
     @Test
-    void readCompleteRequestBroken() throws IOException {
-        String firstLine = "a=b\n\na";
-
-        ByteBuffer buf = stringBuffer(firstLine);
-        ConnectionState state = HANDLER.createState();
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        List<Pair<String, String>> data = HANDLER.getData();
-
-        assertEquals(1, data.size());
-        assertEquals(data.get(0), new Pair<>("a", "b"));
+    fun readCompleteRequestBroken() {
+        val firstLine = "a=b\n\na"
+        val buf = stringBuffer(firstLine)
+        val state = HANDLER.createState()
+        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        val data = HANDLER.getData()
+        assertNotNull(data)
+        assertEquals(1, data.size)
+        assertEquals(data[0], Pair("a", "b"))
     }
 
     @Test
-    void readFragmentedRequestComplete() throws IOException {
-        String firstLine = "a=b\n";
-        String secondLine = "\n";
-
-        ConnectionState state = HANDLER.createState();
-        ByteBuffer buf = stringBuffer(firstLine);
-
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        List<Pair<String, String>> data = HANDLER.getData();
-        assertNull(data);
-
-        buf = stringBuffer(secondLine);
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        data = HANDLER.getData();
-        assertEquals(singletonList(new Pair<>("a", "b")), data);
+    fun readFragmentedRequestComplete() {
+        val firstLine = "a=b\n"
+        val secondLine = "\n"
+        val state = HANDLER.createState()
+        var buf = stringBuffer(firstLine)
+        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        var data = HANDLER.getData()
+        assertNull(data)
+        buf = stringBuffer(secondLine)
+        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        data = HANDLER.getData()
+        assertEquals(listOf(Pair("a", "b")), data)
     }
 
     @Test
-    void readFragmentedRequestBroken() throws IOException {
-        String firstLine = "a=b\n";
-        String secondLine = "\na";
-        String rest = "=c\n\n";
-
-        ConnectionState state = HANDLER.createState();
-        ByteBuffer buf = stringBuffer(firstLine);
-
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        assertNull(HANDLER.getData());
-
-        buf = stringBuffer(secondLine);
-
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        assertEquals(singletonList(new Pair<>("a", "b")), HANDLER.getData());
-
-        buf = stringBuffer(rest);
-
-        assertEquals(buf.remaining(), state.read(DEFAULT, buf));
-        assertEquals(singletonList(new Pair<>("a", "c")), HANDLER.getData());
+    fun readFragmentedRequestBroken() {
+        val firstLine = "a=b\n"
+        val secondLine = "\na"
+        val rest = "=c\n\n"
+        val state = HANDLER.createState()
+        var buf = stringBuffer(firstLine)
+        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        assertNull(HANDLER.getData())
+        buf = stringBuffer(secondLine)
+        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        assertEquals(listOf(Pair("a", "b")), HANDLER.getData())
+        buf = stringBuffer(rest)
+        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        assertEquals(listOf(Pair("a", "c")), HANDLER.getData())
     }
-
 }

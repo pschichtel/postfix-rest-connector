@@ -15,22 +15,21 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import tel.schich.postfixrestconnector.TcpLookupHandler.Companion.decodeURLEncodedData
+import tel.schich.postfixrestconnector.TcpLookupHandler.Companion.encodeResponseData
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class TcpLookupHandlerTest {
     @Test
-    public void testDecode() throws IOException {
-        assertEquals("+ %&§ß", TcpLookupHandler.decodeURLEncodedData("+%20%25&%C2%A7%C3%9F"));
-    }
-    @Test
-    public void testEncode() throws IOException {
-        assertEquals("+%20%25%26%C2%A7%C3%9F", TcpLookupHandler.encodeResponseData("+ %&§ß"));
+    fun testDecode() {
+        assertEquals("+ %&§ß", decodeURLEncodedData("+%20%25&%C2%A7%C3%9F"))
     }
 
+    @Test
+    fun testEncode() {
+        assertEquals("+%20%25%26%C2%A7%C3%9F", encodeResponseData("+ %&§ß"))
+    }
 }

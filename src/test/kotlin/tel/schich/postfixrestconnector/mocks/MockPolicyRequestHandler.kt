@@ -15,35 +15,24 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector.mocks;
+package tel.schich.postfixrestconnector.mocks
 
-import java.net.http.HttpClient;
-import java.nio.channels.SocketChannel;
-import java.util.List;
-import java.util.UUID;
+import tel.schich.postfixrestconnector.Endpoint
+import tel.schich.postfixrestconnector.PolicyRequestHandler
+import java.net.http.HttpClient.newHttpClient
+import java.nio.channels.SocketChannel
+import java.util.UUID
 
-import kotlin.Pair;
-import org.jetbrains.annotations.NotNull;
-import tel.schich.postfixrestconnector.Endpoint;
-import tel.schich.postfixrestconnector.PolicyRequestHandler;
-
-public class MockPolicyRequestHandler extends PolicyRequestHandler {
-    private List<Pair<String, String>> data;
-
-    public MockPolicyRequestHandler(Endpoint endpoint) {
-        super(endpoint, HttpClient.newHttpClient(), "test");
+class MockPolicyRequestHandler(endpoint: Endpoint) : PolicyRequestHandler(endpoint, newHttpClient(), "test") {
+    private var data: List<Pair<String, String>>? = null
+    override fun handleRequest(ch: SocketChannel, id: UUID, params: List<Pair<String, String>>) {
+        data = params
+        super.handleRequest(ch, id, params)
     }
 
-    @Override
-    protected void handleRequest(@NotNull SocketChannel ch, @NotNull UUID id, @NotNull List<Pair<String, String>> params) {
-        data = params;
-        super.handleRequest(ch, id, params);
+    fun getData(): List<Pair<String, String>>? {
+        val copy = data
+        data = null
+        return copy
     }
-
-    public List<Pair<String, String>> getData() {
-        List<Pair<String, String>> copy = this.data;
-        this.data = null;
-        return copy;
-    }
-
 }

@@ -15,118 +15,90 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector.mocks;
+package tel.schich.postfixrestconnector.mocks
 
-import java.net.Socket;
-import java.net.SocketAddress;
-import java.net.SocketOption;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-import java.nio.channels.spi.SelectorProvider;
-import java.util.Set;
+import java.net.Socket
+import java.net.SocketAddress
+import java.net.SocketOption
+import java.nio.ByteBuffer
+import java.nio.channels.SocketChannel
+import java.nio.channels.spi.SelectorProvider
 
-public class MockSocketChannel extends SocketChannel {
-
-    public static final MockSocketChannel DEFAULT = new MockSocketChannel();
-
-    public MockSocketChannel() {
-        super(SelectorProvider.provider());
+class MockSocketChannel : SocketChannel(SelectorProvider.provider()) {
+    override fun bind(local: SocketAddress): SocketChannel? {
+        return null
     }
 
-    @Override
-    public SocketChannel bind(SocketAddress local) {
-        return null;
+    override fun <T> setOption(name: SocketOption<T>, value: T): SocketChannel? {
+        return null
     }
 
-    @Override
-    public <T> SocketChannel setOption(SocketOption<T> name, T value) {
-        return null;
+    override fun shutdownInput(): SocketChannel? {
+        return null
     }
 
-    @Override
-    public SocketChannel shutdownInput() {
-        return null;
+    override fun shutdownOutput(): SocketChannel? {
+        return null
     }
 
-    @Override
-    public SocketChannel shutdownOutput() {
-        return null;
+    override fun socket(): Socket? {
+        return null
     }
 
-    @Override
-    public Socket socket() {
-        return null;
+    override fun isConnected(): Boolean {
+        return false
     }
 
-    @Override
-    public boolean isConnected() {
-        return false;
+    override fun isConnectionPending(): Boolean {
+        return false
     }
 
-    @Override
-    public boolean isConnectionPending() {
-        return false;
+    override fun connect(remote: SocketAddress): Boolean {
+        return false
     }
 
-    @Override
-    public boolean connect(SocketAddress remote) {
-        return false;
+    override fun finishConnect(): Boolean {
+        return false
     }
 
-    @Override
-    public boolean finishConnect() {
-        return false;
+    override fun getRemoteAddress(): SocketAddress? {
+        return null
     }
 
-    @Override
-    public SocketAddress getRemoteAddress() {
-        return null;
+    override fun read(dst: ByteBuffer): Int {
+        return 0
     }
 
-    @Override
-    public int read(ByteBuffer dst) {
-        return 0;
+    override fun read(dsts: Array<ByteBuffer>, offset: Int, length: Int): Long {
+        return 0
     }
 
-    @Override
-    public long read(ByteBuffer[] dsts, int offset, int length) {
-        return 0;
+    override fun write(src: ByteBuffer): Int {
+        val remaining = src.remaining()
+        src.position(src.limit())
+        return remaining
     }
 
-    @Override
-    public int write(ByteBuffer src) {
-        int remaining = src.remaining();
-        src.position(src.limit());
-        return remaining;
+    override fun write(srcs: Array<ByteBuffer>, offset: Int, length: Int): Long {
+        return 0
     }
 
-    @Override
-    public long write(ByteBuffer[] srcs, int offset, int length) {
-        return 0;
+    override fun getLocalAddress(): SocketAddress? {
+        return null
     }
 
-    @Override
-    public SocketAddress getLocalAddress() {
-        return null;
+    override fun <T> getOption(name: SocketOption<T>): T? {
+        return null
     }
 
-    @Override
-    public <T> T getOption(SocketOption<T> name) {
-        return null;
+    override fun supportedOptions(): Set<SocketOption<*>>? {
+        return null
     }
 
-    @Override
-    public Set<SocketOption<?>> supportedOptions() {
-        return null;
-    }
+    override fun implCloseSelectableChannel() {}
+    override fun implConfigureBlocking(block: Boolean) {}
 
-    @Override
-    protected void implCloseSelectableChannel() {
-
-    }
-
-    @Override
-    protected void implConfigureBlocking(boolean block) {
-
+    companion object {
+        val DEFAULT = MockSocketChannel()
     }
 }
