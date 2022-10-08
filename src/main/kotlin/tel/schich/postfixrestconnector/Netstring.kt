@@ -15,83 +15,82 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException
 
-public final class Netstring {
-
-    private Netstring() {
-    }
-
-    public static final String EMPTY = "0:,";
-
-    public static String parseOne(String s) throws IOException {
-        final List<String> strings = parse(s);
-        if (strings.size() > 1) {
-            throw new IOException("Multiple netstrings detected, but only one requested!");
+object Netstring {
+    const val EMPTY = "0:,"
+    
+    @JvmStatic
+    @Throws(IOException::class)
+    fun parseOne(s: String): String {
+        val strings = parse(s)
+        if (strings.size > 1) {
+            throw IOException("Multiple netstrings detected, but only one requested!")
         }
-        return strings.get(0);
+        return strings[0]
     }
 
-    public static List<String> parse(String s) throws IOException {
-        int colonPos;
-        int offset = 0;
-        int runLength;
-        int commaPos;
-        List<String> out = new ArrayList<>();
-
+    @JvmStatic
+    @Throws(IOException::class)
+    fun parse(s: String): List<String> {
+        var colonPos: Int
+        var offset = 0
+        var runLength: Int
+        var commaPos: Int
+        val out: MutableList<String> = ArrayList()
         try {
-            while (offset < s.length()) {
-                colonPos = s.indexOf(':', offset);
+            while (offset < s.length) {
+                colonPos = s.indexOf(':', offset)
                 if (colonPos == -1) {
-                    throw new IOException("Expected to find a ':' after " + offset + ", but didn't!");
+                    throw IOException("Expected to find a ':' after $offset, but didn't!")
                 }
-                runLength = Integer.parseInt(s.substring(offset, colonPos));
-                commaPos = colonPos + 1 + runLength;
-                if (s.charAt(commaPos) != ',') {
-                    throw new IOException(
-                            "Expected ',' at " + offset + ", but got '" + s.charAt(commaPos) + "' after data!");
+                runLength = s.substring(offset, colonPos).toInt()
+                commaPos = colonPos + 1 + runLength
+                if (s[commaPos] != ',') {
+                    throw IOException(
+                        "Expected ',' at " + offset + ", but got '" + s[commaPos] + "' after data!"
+                    )
                 }
-                out.add(s.substring(colonPos + 1, commaPos));
-                offset = commaPos + 1;
+                out.add(s.substring(colonPos + 1, commaPos))
+                offset = commaPos + 1
             }
-        } catch (NumberFormatException | IndexOutOfBoundsException e) {
-            throw new IOException("Failed to parse netstring!", e);
+        } catch (e: NumberFormatException) {
+            throw IOException("Failed to parse netstring!", e)
+        } catch (e: IndexOutOfBoundsException) {
+            throw IOException("Failed to parse netstring!", e)
         }
-
-        return out;
+        return out
     }
 
-    public static String compile(List<String> strings) {
+    @JvmStatic
+    fun compile(strings: List<String>): String {
         if (strings.isEmpty()) {
-            return "";
+            return ""
         }
-        StringBuilder out = new StringBuilder();
-        for (String s : strings) {
-            compile(s, out);
+        val out = StringBuilder()
+        for (s in strings) {
+            compile(s, out)
         }
-
-        return out.toString();
+        return out.toString()
     }
 
-    public static String compileOne(String s) {
+    @JvmStatic
+    fun compileOne(s: String): String {
         if (s.isEmpty()) {
-            return EMPTY;
+            return EMPTY
         }
-
-        StringBuilder out = new StringBuilder();
-        compile(s, out);
-        return out.toString();
+        val out = StringBuilder()
+        compile(s, out)
+        return out.toString()
     }
 
-    private static void compile(String s, StringBuilder out) {
+    private fun compile(s: String, out: StringBuilder) {
         if (s.isEmpty()) {
-            out.append(EMPTY);
+            out.append(EMPTY)
         } else {
-            out.append(s.length()).append(':').append(s).append(',');
+            out.append(s.length).append(':').append(s).append(',')
         }
     }
 }

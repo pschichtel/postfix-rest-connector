@@ -20,27 +20,28 @@ package tel.schich.postfixrestconnector.mocks;
 import java.net.http.HttpClient;
 import java.nio.channels.SocketChannel;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
+import kotlin.Pair;
+import org.jetbrains.annotations.NotNull;
 import tel.schich.postfixrestconnector.Endpoint;
 import tel.schich.postfixrestconnector.PolicyRequestHandler;
 
 public class MockPolicyRequestHandler extends PolicyRequestHandler {
-    private List<Map.Entry<String, String>> data;
+    private List<Pair<String, String>> data;
 
     public MockPolicyRequestHandler(Endpoint endpoint) {
         super(endpoint, HttpClient.newHttpClient(), "test");
     }
 
     @Override
-    protected void handleRequest(SocketChannel ch, UUID id, List<Map.Entry<String, String>> params) {
+    protected void handleRequest(@NotNull SocketChannel ch, @NotNull UUID id, @NotNull List<Pair<String, String>> params) {
         data = params;
         super.handleRequest(ch, id, params);
     }
 
-    public List<Map.Entry<String, String>> getData() {
-        List<Map.Entry<String, String>> copy = this.data;
+    public List<Pair<String, String>> getData() {
+        List<Pair<String, String>> copy = this.data;
         this.data = null;
         return copy;
     }

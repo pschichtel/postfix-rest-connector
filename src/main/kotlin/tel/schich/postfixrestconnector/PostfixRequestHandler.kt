@@ -15,22 +15,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import static java.net.URLEncoder.encode;
-import static java.nio.charset.StandardCharsets.US_ASCII;
-
-public interface PostfixRequestHandler {
-    Endpoint getEndpoint();
-
-    ConnectionState createState();
-
-    static String formUrlEncode(Collection<Map.Entry<String, String>> params) {
-        return params.stream().map(p -> encode(p.getKey(), US_ASCII) + "=" + encode(p.getValue(), US_ASCII))
-                .collect(Collectors.joining("&"));
-    }
+interface PostfixRequestHandler {
+    val endpoint: Endpoint
+    fun createState(): ConnectionState
 }

@@ -15,239 +15,230 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.ktor.http.takeFrom
+import io.ktor.server.util.url
+import kotlinx.serialization.json.Json
+import org.slf4j.LoggerFactory
+import tel.schich.postfixrestconnector.LookupResponseHelper.encodeResponse
+import tel.schich.postfixrestconnector.LookupResponseHelper.parseResponse
+import tel.schich.postfixrestconnector.Netstring.compileOne
+import java.io.IOException
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.ByteBuffer
+import java.nio.channels.SocketChannel
+import java.nio.charset.StandardCharsets
+import java.time.Duration
+import java.util.UUID
+import java.util.concurrent.TimeoutException
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-import java.time.Duration;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeoutException;
+open class SocketmapLookupHandler(
+    override val endpoint: Endpoint,
+    private val http: HttpClient,
+    private val mapper: Json,
+    private val userAgent: String
+) : PostfixRequestHandler {
 
-import static java.nio.charset.StandardCharsets.US_ASCII;
-import static tel.schich.postfixrestconnector.Util.param;
-
-public class SocketmapLookupHandler implements PostfixRequestHandler {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SocketmapLookupHandler.class);
-
-    public static final String MODE_NAME = "socketmap-lookup";
-
-    private static final int MAXIMUM_RESPONSE_LENGTH = 10000;
-
-    private static final char END = ',';
-
-    private final Endpoint endpoint;
-
-    private final HttpClient http;
-
-    private final ObjectMapper mapper;
-    private final String userAgent;
-
-    public SocketmapLookupHandler(Endpoint endpoint, HttpClient http, ObjectMapper mapper, String userAgent) {
-        this.endpoint = endpoint;
-        this.http = http;
-        this.mapper = mapper;
-        this.userAgent = userAgent;
+    override fun createState(): ConnectionState {
+        return SocketMapConnectionState()
     }
 
-    @Override
-    public Endpoint getEndpoint() {
-        return endpoint;
-    }
-
-    @Override
-    public ConnectionState createState() {
-        return new SocketMapConnectionState();
-    }
-
-    protected void handleRequest(SocketChannel ch, UUID id, String requestData) throws IOException {
-        LOGGER.info("{} - socketmap-lookup request on endpoint {}: {}", id, endpoint.name(), requestData);
-
-        final int spacePos = requestData.indexOf(' ');
+    @Throws(IOException::class)
+    protected open fun handleRequest(ch: SocketChannel, id: UUID, requestData: String) {
+        LOGGER.info("{} - socketmap-lookup request on endpoint {}: {}", id, endpoint.name, requestData)
+        val spacePos = requestData.indexOf(' ')
         if (spacePos == -1) {
-            writeBrokenRequestErrorAndClose(ch, id, "invalid request format");
-            return;
+            writeBrokenRequestErrorAndClose(ch, id, "invalid request format")
+            return
         }
 
         // splitting at the first space assumes, that map names with spaces cannot be configured in postfix
         // compared to the TCP lookup, these values are not URL encoded
-        final String name = requestData.substring(0, spacePos);
-        final String lookupKey = requestData.substring(spacePos + 1);
-
-        final URI uri = Util.appendQueryParams(endpoint.target(), List.of(param("name", name), param("key", lookupKey)));
-
-        LOGGER.info("{} - request to: {}", id, uri);
-
-        final HttpRequest request = HttpRequest.newBuilder()
-                .uri(uri)
-                .header("User-Agent", userAgent)
-                .header("X-Auth-Token", endpoint.authToken())
-                .header("X-Request-Id", id.toString())
-                .timeout(Duration.ofMillis(endpoint.requestTimeout()))
-                .build();
-
-        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, err) -> {
-            try {
-                if (err != null) {
-                    LOGGER.error("{} - error occurred during request!", id, err);
-                    if (err instanceof TimeoutException) {
-                        writeTimeoutError(ch, id, "REST request timed out: " + err.getMessage());
-                    } else {
-                        writeTempError(ch, id, err.getMessage());
-                    }
-                    return;
-                }
-
-                int statusCode = response.statusCode();
-                LOGGER.info("{} - received response: {}", id, statusCode);
-                if (statusCode == 200) {
-                    // REST call successful -> return data
-                    String data = response.body();
-                    if (data == null) {
-                        LOGGER.warn("{} - No result!", id);
-                        writeTempError(ch, id, "REST result was broken!");
-                    } else if (data.isEmpty()) {
-                        writeNotFoundResponse(ch, id);
-                    } else {
-                        final List<String> responseValues = LookupResponseHelper.parseResponse(mapper, data);
-                        if (responseValues.isEmpty()) {
-                            writeNotFoundResponse(ch, id);
-                        } else {
-                            LOGGER.info("{} - Response: {}", id, responseValues);
-                            writeOkResponse(ch, id, responseValues, endpoint.listSeparator());
-                        }
-                    }
-                } else if (statusCode == 404) {
-                    writeNotFoundResponse(ch, id);
-                } else if (statusCode >= 400 && statusCode < 500) {
-                    // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                    writePermError(ch, id,
-                            "REST server signaled a user error, is the connector misconfigured? Code: " + statusCode);
-                } else if (statusCode >= 500 && statusCode < 600) {
-                    // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
-                    writeTempError(ch, id, "REST server had an internal error: " + statusCode);
-                } else {
-                    writeTempError(ch, id, "REST server responded with an unspecified code: " + statusCode);
-                }
-            } catch (IOException e) {
-                LOGGER.error("{} - Failed to write response!", id, e);
+        val name = requestData.substring(0, spacePos)
+        val lookupKey = requestData.substring(spacePos + 1)
+        val uri = url {
+            takeFrom(endpoint.target)
+            parameters.append("name", name)
+            parameters.append("key", lookupKey)
+        }
+        LOGGER.info("{} - request to: {}", id, uri)
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create(uri))
+            .header("User-Agent", userAgent)
+            .header("X-Auth-Token", endpoint.authToken)
+            .header("X-Request-Id", id.toString())
+            .timeout(Duration.ofMillis(endpoint.requestTimeout.toLong()))
+            .build()
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            .whenComplete { response: HttpResponse<String?>, err: Throwable? ->
                 try {
-                    writeTempError(ch, id, "REST connector encountered a problem!");
-                } catch (IOException ex) {
-                    LOGGER.error("{} - While recovering from an error failed to write response!", id, e);
-                }
-            }
-        });
-    }
-
-    public static int writeOkResponse(SocketChannel ch, UUID id, List<String> data, String separator) throws IOException {
-        return writeResponse(ch, id, "OK " + LookupResponseHelper.encodeResponse(data, separator));
-    }
-
-    public static int writeNotFoundResponse(SocketChannel ch, UUID id) throws IOException {
-        return writeResponse(ch, id, "NOTFOUND ");
-    }
-
-    public static void writeBrokenRequestErrorAndClose(SocketChannel ch, UUID id, String reason) throws IOException {
-        LOGGER.error("{} - broken request: {}", id, reason);
-        writePermError(ch, id, "Broken request! (" + reason + ")");
-        ch.close();
-    }
-
-    public static int writeTimeoutError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, "TIMEOUT " + id + " - " + message);
-    }
-
-    public static int writeTempError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, "TEMP " + id + " - " + message);
-    }
-
-    public static int writePermError(SocketChannel ch, UUID id, String message) throws IOException {
-        return writeResponse(ch, id, "PERM " + id + " - " + message);
-    }
-
-    public static int writeResponse(SocketChannel ch, UUID id, String data) throws IOException {
-        if (data.length() > MAXIMUM_RESPONSE_LENGTH) {
-            throw new IOException(id + " - response to long");
-        }
-        String text = Netstring.compileOne(data);
-        LOGGER.info("{} - Response: {}", id, text);
-        byte[] payload = text.getBytes(US_ASCII);
-        return Util.writeAll(ch, payload);
-    }
-
-    private class SocketMapConnectionState  extends BaseConnectionState {
-
-        private static final int READ_LENGTH = 1;
-
-        private static final int READ_VALUE = 2;
-
-        private static final int READ_END = 3;
-
-        private int state = READ_LENGTH;
-
-        private long length = 0;
-
-        private StringBuilder pendingRead = new StringBuilder();
-
-        @Override
-        public long read(SocketChannel ch, ByteBuffer buffer) throws IOException {
-            long bytesRead = 0;
-            while (buffer.remaining() > 0) {
-                final byte c = buffer.get();
-                bytesRead++;
-
-                switch (state) {
-                case READ_LENGTH:
-                    if (c == ':') {
-                        state = READ_VALUE;
-                        pendingRead.setLength(0);
-                    } else {
-                        int digit = c - '0';
-                        if (digit < 0 || digit > 9) {
-                            writeBrokenRequestErrorAndClose(ch, getId(), "Expected a digit, but got: " + (char) c);
+                    if (err != null) {
+                        LOGGER.error("{} - error occurred during request!", id, err)
+                        if (err is TimeoutException) {
+                            writeTimeoutError(ch, id, "REST request timed out: " + err.message)
+                        } else {
+                            writeTempError(ch, id, err.message)
                         }
-                        length = length * 10 + digit;
+                        return@whenComplete
                     }
-                    break;
-                case READ_VALUE:
-                    if (pendingRead.length() < length) {
-                        pendingRead.append((char) c);
-                    }
-
-                    if (pendingRead.length() >= length) {
-                        state = READ_END;
-                    }
-                    break;
-                case READ_END:
-                    if (c == END) {
-                        state = READ_LENGTH;
-                        length = 0;
-                        handleRequest(ch, getId(), pendingRead.toString());
+                    val statusCode = response.statusCode()
+                    LOGGER.info("{} - received response: {}", id, statusCode)
+                    if (statusCode == 200) {
+                        // REST call successful -> return data
+                        val data = response.body()
+                        if (data == null) {
+                            LOGGER.warn("{} - No result!", id)
+                            writeTempError(ch, id, "REST result was broken!")
+                        } else if (data.isEmpty()) {
+                            writeNotFoundResponse(ch, id)
+                        } else {
+                            val responseValues: List<String> = parseResponse(mapper, data)
+                            if (responseValues.isEmpty()) {
+                                writeNotFoundResponse(ch, id)
+                            } else {
+                                LOGGER.info("{} - Response: {}", id, responseValues)
+                                writeOkResponse(ch, id, responseValues, endpoint.listSeparator)
+                            }
+                        }
+                    } else if (statusCode == 404) {
+                        writeNotFoundResponse(ch, id)
+                    } else if (statusCode in 400..499) {
+                        // REST call failed due to user error -> emit permanent error (connector is misconfigured)
+                        writePermError(
+                            ch, id,
+                            "REST server signaled a user error, is the connector misconfigured? Code: $statusCode"
+                        )
+                    } else if (statusCode in 500..599) {
+                        // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
+                        writeTempError(ch, id, "REST server had an internal error: $statusCode")
                     } else {
-                        writeBrokenRequestErrorAndClose(ch, getId(), "Expected comma, but got: " + (char) c);
+                        writeTempError(ch, id, "REST server responded with an unspecified code: $statusCode")
                     }
-                    break;
-                default:
-                    writeBrokenRequestErrorAndClose(ch, getId(), "Reached state " + state + ", but I don't know what to do...");
+                } catch (e: IOException) {
+                    LOGGER.error("{} - Failed to write response!", id, e)
+                    try {
+                        writeTempError(ch, id, "REST connector encountered a problem!")
+                    } catch (ex: IOException) {
+                        LOGGER.error("{} - While recovering from an error failed to write response!", id, e)
+                    }
                 }
             }
-            return bytesRead;
+    }
+
+    private inner class SocketMapConnectionState : BaseConnectionState() {
+        private var state = STATE_READ_LENGTH
+        private var length: Long = 0
+        private var pendingRead: StringBuilder? = StringBuilder()
+
+        @Throws(IOException::class)
+        override fun read(ch: SocketChannel, buffer: ByteBuffer): Long {
+            var bytesRead: Long = 0
+            while (buffer.remaining() > 0) {
+                val c = buffer.get()
+                bytesRead++
+                when (state) {
+                    STATE_READ_LENGTH -> if (c == ':'.code.toByte()) {
+                        state = STATE_READ_VALUE
+                        pendingRead!!.setLength(0)
+                    } else {
+                        val digit = c - '0'.code.toByte()
+                        if (digit < 0 || digit > 9) {
+                            writeBrokenRequestErrorAndClose(
+                                ch,
+                                id,
+                                "Expected a digit, but got: " + Char(c.toUShort())
+                            )
+                        }
+                        length = length * 10 + digit
+                    }
+
+                    STATE_READ_VALUE -> {
+                        if (pendingRead!!.length < length) {
+                            pendingRead!!.append(Char(c.toUShort()))
+                        }
+                        if (pendingRead!!.length >= length) {
+                            state = STATE_READ_END
+                        }
+                    }
+
+                    STATE_READ_END -> if (c == END.code.toByte()) {
+                        state = STATE_READ_LENGTH
+                        length = 0
+                        handleRequest(ch, id, pendingRead.toString())
+                    } else {
+                        writeBrokenRequestErrorAndClose(ch, id, "Expected comma, but got: " + Char(c.toUShort()))
+                    }
+
+                    else -> writeBrokenRequestErrorAndClose(
+                        ch,
+                        id,
+                        "Reached state $state, but I don't know what to do..."
+                    )
+                }
+            }
+            return bytesRead
         }
 
-        @Override
-        public void close() {
-            this.pendingRead = null;
+        override fun close() {
+            pendingRead = null
+        }
+    }
+
+    companion object {
+        private const val STATE_READ_LENGTH = 1
+        private const val STATE_READ_VALUE = 2
+        private const val STATE_READ_END = 3
+
+        private val LOGGER = LoggerFactory.getLogger(SocketmapLookupHandler::class.java)
+        const val MODE_NAME = "socketmap-lookup"
+        private const val MAXIMUM_RESPONSE_LENGTH = 10000
+        private const val END = ','
+
+        @Throws(IOException::class)
+        fun writeOkResponse(ch: SocketChannel, id: UUID, data: List<String>, separator: String): Int {
+            return writeResponse(ch, id, "OK " + encodeResponse(data, separator))
+        }
+
+        @Throws(IOException::class)
+        fun writeNotFoundResponse(ch: SocketChannel, id: UUID): Int {
+            return writeResponse(ch, id, "NOTFOUND ")
+        }
+
+        @Throws(IOException::class)
+        fun writeBrokenRequestErrorAndClose(ch: SocketChannel, id: UUID, reason: String) {
+            LOGGER.error("{} - broken request: {}", id, reason)
+            writePermError(ch, id, "Broken request! ($reason)")
+            ch.close()
+        }
+
+        @Throws(IOException::class)
+        fun writeTimeoutError(ch: SocketChannel, id: UUID, message: String): Int {
+            return writeResponse(ch, id, "TIMEOUT $id - $message")
+        }
+
+        @Throws(IOException::class)
+        fun writeTempError(ch: SocketChannel, id: UUID, message: String?): Int {
+            return writeResponse(ch, id, "TEMP $id - $message")
+        }
+
+        @Throws(IOException::class)
+        fun writePermError(ch: SocketChannel, id: UUID, message: String): Int {
+            return writeResponse(ch, id, "PERM $id - $message")
+        }
+
+        @Throws(IOException::class)
+        fun writeResponse(ch: SocketChannel, id: UUID, data: String): Int {
+            if (data.length > MAXIMUM_RESPONSE_LENGTH) {
+                throw IOException("$id - response to long")
+            }
+            val text = compileOne(data)
+            LOGGER.info("{} - Response: {}", id, text)
+            val payload = text.toByteArray(StandardCharsets.US_ASCII)
+            return writeAll(ch, payload)
         }
     }
 }

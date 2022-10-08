@@ -20,12 +20,36 @@ package tel.schich.postfixrestconnector;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static tel.schich.postfixrestconnector.Util.param;
 
 public class UtilTest {
+
+    record Param(String name, String value) {
+    }
+
+    static Param param(String name, String value) {
+        return new Param(name, value);
+    }
+
+    static URI appendQueryParams(URI source, Collection<Param> params) {
+        String existingQuery = source.getQuery();
+        String extraQuery = params.stream()
+                .map(e -> URLEncoder.encode(e.name(), UTF_8) + "=" + URLEncoder.encode(e.value(), UTF_8))
+                .collect(Collectors.joining("&"));
+        String query = (existingQuery == null || existingQuery.isEmpty()) ? extraQuery : existingQuery + "&" + extraQuery;
+        try {
+            return new URI(source.getScheme(), source.getUserInfo(), source.getHost(), source.getPort(), source.getPath(), query, source.getFragment());
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("URI syntax got invalid during query appending!", e);
+        }
+    }
 
     @Test
     public void appendQueryString() {
@@ -35,13 +59,13 @@ public class UtilTest {
         );
 
         URI a = URI.create("https://localhost");
-        assertEquals("https://localhost?simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+", Util.appendQueryParams(a, params).toString());
+        assertEquals("https://localhost?simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+", appendQueryParams(a, params).toString());
 
         URI b = URI.create("https://localhost?existing=arg");
-        assertEquals("https://localhost?existing=arg&simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+", Util.appendQueryParams(b, params).toString());
+        assertEquals("https://localhost?existing=arg&simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+", appendQueryParams(b, params).toString());
 
         URI c = URI.create("https://localhost?simply=param");
-        assertEquals("https://localhost?simply=param&simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+", Util.appendQueryParams(c, params).toString());
+        assertEquals("https://localhost?simply=param&simply=param&c%252Bm+plic%25C3%25A6ted%2521=+param+", appendQueryParams(c, params).toString());
     }
 
 }

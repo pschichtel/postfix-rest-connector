@@ -18,18 +18,10 @@
 package tel.schich.postfixrestconnector;
 
 import org.junit.jupiter.api.Test;
-import tel.schich.postfixrestconnector.mocks.MockSocketChannel;
-import tel.schich.postfixrestconnector.mocks.MockSocketmapLookupHandler;
 
 import java.io.IOException;
-import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static tel.schich.postfixrestconnector.LookupResponseHelper.DEFAULT_RESPONSE_VALUE_SEPARATOR;
-import static tel.schich.postfixrestconnector.SocketmapLookupHandler.MODE_NAME;
-import static tel.schich.postfixrestconnector.TestHelper.stringBuffer;
 
 class TcpLookupHandlerTest {
     @Test

@@ -20,21 +20,21 @@ package tel.schich.postfixrestconnector;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 import tel.schich.postfixrestconnector.mocks.MockSocketChannel;
 import tel.schich.postfixrestconnector.mocks.MockSocketmapLookupHandler;
 
+import static io.ktor.http.URLUtilsKt.Url;
 import static org.junit.jupiter.api.Assertions.*;
-import static tel.schich.postfixrestconnector.LookupResponseHelper.DEFAULT_RESPONSE_VALUE_SEPARATOR;
+import static tel.schich.postfixrestconnector.EndpointKt.DEFAULT_RESPONSE_VALUE_SEPARATOR;
 import static tel.schich.postfixrestconnector.SocketmapLookupHandler.MODE_NAME;
 import static tel.schich.postfixrestconnector.TestHelper.stringBuffer;
 
 class SocketmapLookupHandlerTest {
     private static final Endpoint ENDPOINT =
-            new Endpoint("test-policy", URI.create("http://localhost"), "0.0.0.0", 9000, "test123", 1, MODE_NAME, DEFAULT_RESPONSE_VALUE_SEPARATOR);
+            new Endpoint("test-policy", Url("http://localhost"), "0.0.0.0", 9000, "test123", 1, MODE_NAME, DEFAULT_RESPONSE_VALUE_SEPARATOR);
     private static final MockSocketmapLookupHandler HANDLER = new MockSocketmapLookupHandler(ENDPOINT);
 
     @Test

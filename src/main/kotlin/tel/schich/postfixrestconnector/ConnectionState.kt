@@ -15,15 +15,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-import java.util.UUID;
+import java.io.Closeable
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.channels.SocketChannel
+import java.util.UUID
 
-public interface ConnectionState extends Closeable {
-    UUID getId();
-    long read(SocketChannel ch, ByteBuffer buffer) throws IOException;
+interface ConnectionState : Closeable {
+    val id: UUID?
+
+    @Throws(IOException::class)
+    fun read(ch: SocketChannel, buffer: ByteBuffer): Long
 }

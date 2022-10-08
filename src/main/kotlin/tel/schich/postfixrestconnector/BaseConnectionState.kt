@@ -15,15 +15,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import java.util.UUID;
+import java.util.UUID
 
-public abstract class BaseConnectionState implements ConnectionState {
-    private final UUID id = UUID.randomUUID();
-
-    @Override
-    public final UUID getId() {
-        return id;
-    }
+abstract class BaseConnectionState : ConnectionState {
+    override val id: UUID = UUID.randomUUID()
 }

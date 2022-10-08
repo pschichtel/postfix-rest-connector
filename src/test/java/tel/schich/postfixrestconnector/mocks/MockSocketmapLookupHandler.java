@@ -22,8 +22,8 @@ import java.net.http.HttpClient;
 import java.nio.channels.SocketChannel;
 import java.util.UUID;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
+import kotlinx.serialization.json.Json;
+import org.jetbrains.annotations.NotNull;
 import tel.schich.postfixrestconnector.Endpoint;
 import tel.schich.postfixrestconnector.SocketmapLookupHandler;
 
@@ -31,11 +31,11 @@ public class MockSocketmapLookupHandler extends SocketmapLookupHandler {
     private String data;
 
     public MockSocketmapLookupHandler(Endpoint endpoint) {
-        super(endpoint, HttpClient.newHttpClient(), new ObjectMapper(), "test");
+        super(endpoint, HttpClient.newHttpClient(), Json.Default, "test");
     }
 
     @Override
-    protected void handleRequest(SocketChannel ch, UUID id, String requestData) throws IOException {
+    protected void handleRequest(@NotNull SocketChannel ch, @NotNull UUID id, @NotNull String requestData) throws IOException {
         data = requestData;
         super.handleRequest(ch, id, requestData);
     }

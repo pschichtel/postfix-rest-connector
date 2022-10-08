@@ -15,50 +15,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLEncoder;
-import java.nio.ByteBuffer;
-import java.nio.channels.WritableByteChannel;
-import java.util.Collection;
-import java.util.stream.Collectors;
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.channels.WritableByteChannel
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
-final class Util {
-
-    private Util() {
+@Throws(IOException::class)
+fun writeAll(ch: WritableByteChannel, payload: ByteArray): Int {
+    val buf = ByteBuffer.wrap(payload)
+    var bytesWritten = 0
+    while (buf.hasRemaining()) {
+        bytesWritten += ch.write(buf)
     }
-
-    static int writeAll(WritableByteChannel ch, byte[] payload) throws IOException {
-        ByteBuffer buf = ByteBuffer.wrap(payload);
-        int bytesWritten = 0;
-        while (buf.hasRemaining()) {
-            bytesWritten += ch.write(buf);
-        }
-        return bytesWritten;
-    }
-
-    record Param(String name, String value) {
-    }
-
-    static Param param(String name, String value) {
-        return new Param(name, value);
-    }
-
-    static URI appendQueryParams(URI source, Collection<Param> params) {
-        String existingQuery = source.getQuery();
-        String extraQuery = params.stream()
-                .map(e -> URLEncoder.encode(e.name(), UTF_8) + "=" + URLEncoder.encode(e.value(), UTF_8))
-                .collect(Collectors.joining("&"));
-        String query = (existingQuery == null || existingQuery.isEmpty()) ? extraQuery : existingQuery + "&" + extraQuery;
-        try {
-            return new URI(source.getScheme(), source.getUserInfo(), source.getHost(), source.getPort(), source.getPath(), query, source.getFragment());
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("URI syntax got invalid during query appending!", e);
-        }
-    }
+    return bytesWritten
 }

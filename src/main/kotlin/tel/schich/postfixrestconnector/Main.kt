@@ -15,30 +15,22 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tel.schich.postfixrestconnector;
+package tel.schich.postfixrestconnector
 
-import java.io.IOException;
-import java.nio.channels.spi.SelectorProvider;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.channels.spi.SelectorProvider
+import java.nio.file.Paths
+import kotlin.system.exitProcess
 
-public class Main {
-
-    public static void main(String[] args) throws IOException {
-        final Path config;
-        if (args.length == 1) {
-            config = Paths.get(args[0]);
-        } else {
-            System.err.println("Usage: <config path>");
-            System.exit(1);
-            return;
-        }
-
-        try (RestConnector restConnector = new RestConnector()) {
-            Runtime.getRuntime().addShutdownHook(new Thread(restConnector::stop));
-
-            restConnector.start(SelectorProvider.provider(), config);
-        }
+fun main(args: Array<String>) {
+    val config = if (args.size == 1) {
+        Paths.get(args[0])
+    } else {
+        System.err.println("Usage: <config path>")
+        exitProcess(1)
     }
 
+    RestConnector().use { restConnector ->
+        Runtime.getRuntime().addShutdownHook(Thread { restConnector.stop() })
+        restConnector.start(SelectorProvider.provider(), config)
+    }
 }
