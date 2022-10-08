@@ -1,6 +1,7 @@
 package tel.schich.postfixrestconnector
 
 import io.ktor.http.Url
+import kotlinx.coroutines.runBlocking
 import tel.schich.postfixrestconnector.mocks.MockPolicyRequestHandler
 import tel.schich.postfixrestconnector.mocks.MockSocketChannel
 import kotlin.test.Test
@@ -22,46 +23,46 @@ class PolicyRequestHandlerTest {
     private val handler = MockPolicyRequestHandler(endpoint)
     
     @Test
-    fun readCompleteRequestComplete() {
+    fun readCompleteRequestComplete() = runBlocking {
         val firstLine = "a=b\n\n"
         val buf = stringBuffer(firstLine)
         val state = handler.createState()
         assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
-        val data = handler.getData()
+        val data = handler.getDataAsPairs()
         assertNotNull(data)
         assertEquals(1, data.size)
         assertEquals(data[0], Pair("a", "b"))
     }
 
     @Test
-    fun readCompleteRequestBroken() {
+    fun readCompleteRequestBroken() = runBlocking {
         val firstLine = "a=b\n\na"
         val buf = stringBuffer(firstLine)
         val state = handler.createState()
         assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
-        val data = handler.getData()
+        val data = handler.getDataAsPairs()
         assertNotNull(data)
         assertEquals(1, data.size)
         assertEquals(data[0], Pair("a", "b"))
     }
 
     @Test
-    fun readFragmentedRequestComplete() {
+    fun readFragmentedRequestComplete() = runBlocking {
         val firstLine = "a=b\n"
         val secondLine = "\n"
         val state = handler.createState()
         var buf = stringBuffer(firstLine)
         assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
-        var data = handler.getData()
+        var data = handler.getDataAsPairs()
         assertNull(data)
         buf = stringBuffer(secondLine)
         assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
-        data = handler.getData()
+        data = handler.getDataAsPairs()
         assertEquals(listOf(Pair("a", "b")), data)
     }
 
     @Test
-    fun readFragmentedRequestBroken() {
+    fun readFragmentedRequestBroken() = runBlocking {
         val firstLine = "a=b\n"
         val secondLine = "\na"
         val rest = "=c\n\n"
@@ -71,9 +72,9 @@ class PolicyRequestHandlerTest {
         assertNull(handler.getData())
         buf = stringBuffer(secondLine)
         assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
-        assertEquals(listOf(Pair("a", "b")), handler.getData())
+        assertEquals(listOf(Pair("a", "b")), handler.getDataAsPairs())
         buf = stringBuffer(rest)
         assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
-        assertEquals(listOf(Pair("a", "c")), handler.getData())
+        assertEquals(listOf(Pair("a", "c")), handler.getDataAsPairs())
     }
 }

@@ -1,85 +1,110 @@
+@file:Suppress("DEPRECATION")
+
 package tel.schich.postfixrestconnector.mocks
 
-import java.net.Socket
-import java.net.SocketAddress
-import java.net.SocketOption
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.WriterSuspendSession
+import io.ktor.utils.io.bits.Memory
+import io.ktor.utils.io.core.Buffer
+import io.ktor.utils.io.core.ByteReadPacket
+import io.ktor.utils.io.core.internal.ChunkBuffer
 import java.nio.ByteBuffer
-import java.nio.channels.SocketChannel
-import java.nio.channels.spi.SelectorProvider
 
-class MockSocketChannel : SocketChannel(SelectorProvider.provider()) {
-    override fun bind(local: SocketAddress): SocketChannel? {
-        return null
+class MockSocketChannel : ByteWriteChannel {
+    override val autoFlush: Boolean
+        get() = TODO("Not yet implemented")
+    override val availableForWrite: Int
+        get() = TODO("Not yet implemented")
+    override val closedCause: Throwable?
+        get() = TODO("Not yet implemented")
+    override val isClosedForWrite: Boolean
+        get() = TODO("Not yet implemented")
+    override val totalBytesWritten: Long
+        get() = TODO("Not yet implemented")
+
+    override suspend fun awaitFreeSpace() {
+        TODO("Not yet implemented")
     }
 
-    override fun <T> setOption(name: SocketOption<T>, value: T): SocketChannel? {
-        return null
+    override fun close(cause: Throwable?): Boolean {
+        TODO("Not yet implemented")
     }
 
-    override fun shutdownInput(): SocketChannel? {
-        return null
+    override fun flush() {
     }
 
-    override fun shutdownOutput(): SocketChannel? {
-        return null
+    override suspend fun write(min: Int, block: (ByteBuffer) -> Unit) {
+        TODO("Not yet implemented")
     }
 
-    override fun socket(): Socket? {
-        return null
+    override suspend fun writeAvailable(src: ChunkBuffer): Int {
+        TODO("Not yet implemented")
     }
 
-    override fun isConnected(): Boolean {
-        return false
+    override suspend fun writeAvailable(src: ByteBuffer): Int {
+        TODO("Not yet implemented")
     }
 
-    override fun isConnectionPending(): Boolean {
-        return false
+    override suspend fun writeAvailable(src: ByteArray, offset: Int, length: Int): Int {
+        TODO("Not yet implemented")
     }
 
-    override fun connect(remote: SocketAddress): Boolean {
-        return false
+    override fun writeAvailable(min: Int, block: (ByteBuffer) -> Unit): Int {
+        TODO("Not yet implemented")
     }
 
-    override fun finishConnect(): Boolean {
-        return false
+    override suspend fun writeByte(b: Byte) {
+        TODO("Not yet implemented")
     }
 
-    override fun getRemoteAddress(): SocketAddress? {
-        return null
+    override suspend fun writeDouble(d: Double) {
+        TODO("Not yet implemented")
     }
 
-    override fun read(dst: ByteBuffer): Int {
-        return 0
+    override suspend fun writeFloat(f: Float) {
+        TODO("Not yet implemented")
     }
 
-    override fun read(dsts: Array<ByteBuffer>, offset: Int, length: Int): Long {
-        return 0
+    override suspend fun writeFully(memory: Memory, startIndex: Int, endIndex: Int) {
+        TODO("Not yet implemented")
     }
 
-    override fun write(src: ByteBuffer): Int {
-        val remaining = src.remaining()
-        src.position(src.limit())
-        return remaining
+    override suspend fun writeFully(src: Buffer) {
+        TODO("Not yet implemented")
     }
 
-    override fun write(srcs: Array<ByteBuffer>, offset: Int, length: Int): Long {
-        return 0
+    override suspend fun writeFully(src: ByteBuffer) {
+
     }
 
-    override fun getLocalAddress(): SocketAddress? {
-        return null
+    override suspend fun writeFully(src: ByteArray, offset: Int, length: Int) {
+        TODO("Not yet implemented")
     }
 
-    override fun <T> getOption(name: SocketOption<T>): T? {
-        return null
+    override suspend fun writeInt(i: Int) {
+        TODO("Not yet implemented")
     }
 
-    override fun supportedOptions(): Set<SocketOption<*>>? {
-        return null
+    override suspend fun writeLong(l: Long) {
+        TODO("Not yet implemented")
     }
 
-    override fun implCloseSelectableChannel() {}
-    override fun implConfigureBlocking(block: Boolean) {}
+    override suspend fun writePacket(packet: ByteReadPacket) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun writeShort(s: Short) {
+        TODO("Not yet implemented")
+    }
+
+    @Deprecated("Use write { } instead.")
+    override suspend fun writeSuspendSession(visitor: suspend WriterSuspendSession.() -> Unit) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun writeWhile(block: (ByteBuffer) -> Boolean) {
+        TODO("Not yet implemented")
+    }
 
     companion object {
         val DEFAULT = MockSocketChannel()

@@ -1,15 +1,38 @@
 package tel.schich.postfixrestconnector
 
-import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.channels.WritableByteChannel
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.utils.EmptyContent
+import mu.KLogger
+import java.util.UUID
 
-@Throws(IOException::class)
-fun writeAll(ch: WritableByteChannel, payload: ByteArray): Int {
-    val buf = ByteBuffer.wrap(payload)
-    var bytesWritten = 0
-    while (buf.hasRemaining()) {
-        bytesWritten += ch.write(buf)
+fun HttpRequestBuilder.logRequest(id: UUID, logger: KLogger) {
+    val sb = StringBuilder()
+    sb.append(method.value)
+    sb.append(' ')
+    sb.append(url.buildString())
+    for ((name, values) in headers.entries()) {
+        for (value in values) {
+            sb.append('\n')
+            sb.append(name)
+            sb.append(": ")
+            sb.append(value)
+        }
     }
-    return bytesWritten
+    sb.append("\n\n")
+    if (body !is EmptyContent) {
+        sb.append("<body>")
+    }
+    logger.info { "Request of $id:\n$sb" }
+}
+
+fun encodeLookupResponse(values: Iterable<String>, separator: String): String {
+    val it = values.iterator()
+    if (!it.hasNext()) {
+        return ""
+    }
+    val out = StringBuilder(it.next())
+    while (it.hasNext()) {
+        out.append(separator).append(it.next())
+    }
+    return out.toString()
 }

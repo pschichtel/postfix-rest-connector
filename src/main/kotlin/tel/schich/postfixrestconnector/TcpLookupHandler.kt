@@ -1,117 +1,125 @@
 package tel.schich.postfixrestconnector
 
+import io.ktor.client.HttpClient
+import io.ktor.client.call.NoTransformationFoundException
+import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.request
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.http.takeFrom
-import io.ktor.server.util.url
-import kotlinx.serialization.json.Json
-import org.slf4j.LoggerFactory
-import tel.schich.postfixrestconnector.LookupResponseHelper.encodeResponse
-import tel.schich.postfixrestconnector.LookupResponseHelper.parseResponse
+import io.ktor.serialization.ContentConvertException
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import mu.KotlinLogging
 import java.io.IOException
-import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.nio.ByteBuffer
-import java.nio.channels.SocketChannel
-import java.nio.charset.StandardCharsets
-import java.time.Duration
 import java.util.UUID
-import java.util.concurrent.TimeoutException
+
+private val logger = KotlinLogging.logger {  }
 
 class TcpLookupHandler(
     override val endpoint: Endpoint,
     private val http: HttpClient,
-    private val mapper: Json,
     private val userAgent: String
 ) : PostfixRequestHandler {
     override fun createState() = TcpConnectionState()
 
-    @Throws(IOException::class)
-    private fun handleRequest(ch: SocketChannel, id: UUID, rawRequest: String) {
-        LOGGER.info("{} - tcp-lookup request on endpoint {}: {}", id, endpoint.name, rawRequest)
+    private suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, rawRequest: String) {
+        logger.info { "$id - tcp-lookup request on endpoint ${endpoint.name}: $rawRequest" }
         if (rawRequest.length <= LOOKUP_PREFIX.length || !rawRequest.startsWith(LOOKUP_PREFIX)) {
             writeError(ch, id, "Broken request!")
-            ch.close()
+            ch.close(cause = null)
             return
         }
         val lookupKey = decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length).trim { it <= ' ' })
-        val uri = url {
-            takeFrom(endpoint.target)
-            parameters.append("key", lookupKey)
-        }
-        LOGGER.info("{} - request to: {}", id, uri)
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(uri))
-            .header("User-Agent", userAgent)
-            .header("X-Auth-Token", endpoint.authToken)
-            .header("X-Request-Id", id.toString())
-            .timeout(Duration.ofMillis(endpoint.requestTimeout.toLong()))
-            .build()
-        printRequest(id, request)
-        http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-            .whenComplete { response: HttpResponse<String?>, err: Throwable? ->
-                try {
-                    if (err != null) {
-                        LOGGER.error("{} - error occurred during request!", id, err)
-                        if (err is TimeoutException) {
-                            writeError(ch, id, "REST request timed out: " + err.message)
-                        } else {
-                            writeError(ch, id, err.message)
-                        }
-                        return@whenComplete
-                    }
-                    val statusCode = response.statusCode()
-                    LOGGER.info("{} - received response: {}", id, statusCode)
-                    if (statusCode == 200) {
-                        // REST call successful -> return data
-                        val data = response.body()
-                        if (data == null) {
-                            LOGGER.warn("{} - No result!", id)
-                            writeError(ch, id, "REST result was broken!")
-                        } else if (data.isEmpty()) {
-                            writeNotFoundResponse(ch, id)
-                        } else {
-                            val responseValues = parseResponse(mapper, data)
-                            if (responseValues.isEmpty()) {
-                                writeNotFoundResponse(ch, id)
-                            } else {
-                                LOGGER.info("{} - Response: {}", id, responseValues)
-                                writeSuccessfulResponse(ch, id, responseValues, endpoint.listSeparator)
-                            }
-                        }
-                    } else if (statusCode == 404) {
-                        writeNotFoundResponse(ch, id)
-                    } else if (statusCode in 400..499) {
-                        // REST call failed due to user error -> emit permanent error (connector is misconfigured)
-                        writeError(
-                            ch, id,
-                            "REST server signaled a user error, is the connector misconfigured? Code: $statusCode"
-                        )
-                    } else if (statusCode in 500..599) {
-                        // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
-                        writeError(ch, id, "REST server had an internal error: $statusCode")
-                    } else {
-                        writeError(ch, id, "REST server responded with an unspecified code: $statusCode")
-                    }
-                } catch (e: IOException) {
-                    LOGGER.error("{} - Failed to write response!", id, e)
-                    try {
-                        writeError(ch, id, "REST connector encountered a problem!")
-                    } catch (ex: IOException) {
-                        e.addSuppressed(ex)
-                        LOGGER.error("{} - While recovering from an error failed to write response!", id, e)
-                    }
+
+        val response = try {
+            http.request {
+                method = HttpMethod.Get
+                url {
+                    takeFrom(endpoint.target)
+                    parameters.append("key", lookupKey)
                 }
+                logger.info { "$id - request to: $url" }
+                headers.append("User-Agent", userAgent)
+                headers.append("X-Auth-Token", endpoint.authToken)
+                headers.append("X-Request-Id", id.toString())
+                timeout {
+                    requestTimeoutMillis = endpoint.requestTimeout.toLong()
+                }
+                logRequest(id, logger)
             }
+        } catch (e: HttpRequestTimeoutException) {
+            logger.error(e) { "$id - request timeout out!!" }
+            writeError(ch, id, "REST request timed out: " + e.message)
+            return
+        } catch (e: CancellationException) {
+            logger.error(e) { "$id - coroutine got cancelled!!" }
+            withContext(NonCancellable) {
+                writeError(ch, id, "Coroutine cancelled: " + e.message)
+            }
+            throw e
+        } catch (e: IOException) {
+            logger.error(e) { "$id - error occurred during request!" }
+            writeError(ch, id, e.message)
+            return
+        }
+
+        try {
+            val statusCode = response.status
+            logger.info { "$id - received response: $statusCode" }
+            if (statusCode == HttpStatusCode.OK) {
+                // REST call successful -> return data
+                val data = response.body<List<String>>()
+                if (data.isEmpty()) {
+                    writeNotFoundResponse(ch, id)
+                } else {
+                    logger.info { "$id - Response: $data" }
+                    writeSuccessfulResponse(ch, id, data, endpoint.listSeparator)
+                }
+            } else if (statusCode == HttpStatusCode.NotFound) {
+                writeNotFoundResponse(ch, id)
+            } else if (statusCode.value in 400..499) {
+                // REST call failed due to user error -> emit permanent error (connector is misconfigured)
+                writeError(
+                    ch,
+                    id,
+                    "REST server signaled a user error, is the connector misconfigured? Code: $statusCode"
+                )
+            } else if (statusCode.value in 500..599) {
+                // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
+                writeError(ch, id, "REST server had an internal error: $statusCode")
+            } else {
+                writeError(ch, id, "REST server responded with an unspecified code: $statusCode")
+            }
+        } catch (e: ContentConvertException) {
+            writeInvalidDataError(ch, id, response, e)
+        } catch (e: NoTransformationFoundException) {
+            writeInvalidDataError(ch, id, response, e)
+        } catch (e: IOException) {
+            logger.error(e) { "$id - Failed to write response!" }
+            try {
+                writeError(ch, id, "REST connector encountered a problem!")
+            } catch (ex: IOException) {
+                e.addSuppressed(ex)
+                logger.error(e) { "$id - While recovering from an error failed to write response!" }
+            }
+        }
     }
 
     inner class TcpConnectionState : BaseConnectionState() {
         private var pendingRead: StringBuilder? = StringBuilder()
 
-        @Throws(IOException::class)
-        override fun read(ch: SocketChannel, buffer: ByteBuffer): Long {
+        override suspend fun read(ch: ByteWriteChannel, buffer: ByteBuffer): Long {
             var bytesRead: Long = 0
             while (buffer.remaining() > 0) {
                 val c = buffer.get()
@@ -131,8 +139,36 @@ class TcpLookupHandler(
         }
     }
 
+    private suspend fun writeSuccessfulResponse(ch: ByteWriteChannel, id: UUID, data: List<String>, separator: String) {
+        writeResponse(ch, id, 200, encodeLookupResponse(data, separator))
+    }
+
+    private suspend fun writeNotFoundResponse(ch: ByteWriteChannel, id: UUID) {
+        writeResponse(ch, id, 500, "$id - key not found")
+    }
+
+    private suspend fun writeError(ch: ByteWriteChannel, id: UUID, message: String?) {
+        writeResponse(ch, id, 400, "$id - $message")
+    }
+
+    private suspend fun writeInvalidDataError(ch: ByteWriteChannel, id: UUID, response: HttpResponse, e: Exception) {
+        val bodyText = response.bodyAsText()
+        logger.error(e) { "$id - Received invalid data with Content-Type '${response.contentType()}': $bodyText" }
+        writeError(ch, id, "REST connector received invalid data!")
+    }
+
+    private suspend fun writeResponse(ch: ByteWriteChannel, id: UUID, code: Int, data: String?) {
+        val text = code.toString() + ' ' + encodeResponseData(data) + END
+        val payload = Charsets.US_ASCII.encode(text)
+        if (payload.remaining() > MAXIMUM_RESPONSE_LENGTH) {
+            throw IOException("$id - response to long")
+        }
+        logger.info { "$id - Response: $text" }
+        ch.writeFully(payload)
+        ch.flush()
+    }
+
     companion object {
-        private val LOGGER = LoggerFactory.getLogger(TcpLookupHandler::class.java)
         const val MODE_NAME = "tcp-lookup"
         private const val LOOKUP_PREFIX = "get "
         private const val MAXIMUM_RESPONSE_LENGTH = 4096
@@ -140,58 +176,13 @@ class TcpLookupHandler(
         private const val PLUS = "+"
         private const val PLUS_URL_ENCODED = "%2B"
         private const val SPACE_URL_ENCODED = "%20"
-        private fun printRequest(id: UUID, req: HttpRequest) {
-            val sb = StringBuilder()
-            sb.append(req.method())
-            sb.append(' ')
-            sb.append(req.uri().toASCIIString())
-            for ((key, value1) in req.headers().map()) {
-                for (value in value1) {
-                    sb.append('\n')
-                    sb.append(key)
-                    sb.append(": ")
-                    sb.append(value)
-                }
-            }
-            sb.append("\n\n")
-            req.bodyPublisher().ifPresent { sb.append("<body>") }
-            LOGGER.info("Request of {}:\n{}", id, sb)
-        }
 
-        @Throws(IOException::class)
-        fun writeSuccessfulResponse(ch: SocketChannel, id: UUID, data: List<String>, separator: String): Int {
-            return writeResponse(ch, id, 200, encodeResponse(data, separator))
-        }
-
-        @Throws(IOException::class)
-        fun writeNotFoundResponse(ch: SocketChannel, id: UUID): Int {
-            return writeResponse(ch, id, 500, "$id - key not found")
-        }
-
-        @Throws(IOException::class)
-        fun writeError(ch: SocketChannel, id: UUID, message: String?): Int {
-            return writeResponse(ch, id, 400, "$id - $message")
-        }
-
-        @Throws(IOException::class)
-        fun writeResponse(ch: SocketChannel, id: UUID, code: Int, data: String?): Int {
-            val text = code.toString() + ' ' + encodeResponseData(data) + END
-            val payload = text.toByteArray(StandardCharsets.US_ASCII)
-            if (payload.size > MAXIMUM_RESPONSE_LENGTH) {
-                throw IOException("$id - response to long")
-            }
-            LOGGER.info("{} - Response: {}", id, text)
-            return writeAll(ch, payload)
-        }
-
-        @JvmStatic
         fun decodeURLEncodedData(data: String): String {
-            return URLDecoder.decode(data.replace(PLUS, PLUS_URL_ENCODED), StandardCharsets.UTF_8)
+            return URLDecoder.decode(data.replace(PLUS, PLUS_URL_ENCODED), Charsets.UTF_8)
         }
 
-        @JvmStatic
         fun encodeResponseData(data: String?): String {
-            return URLEncoder.encode(data, StandardCharsets.UTF_8)
+            return URLEncoder.encode(data, Charsets.UTF_8)
                 .replace(PLUS, SPACE_URL_ENCODED)
                 .replace(PLUS_URL_ENCODED, PLUS)
         }

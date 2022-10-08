@@ -1,21 +1,27 @@
 package tel.schich.postfixrestconnector.mocks
 
+import io.ktor.http.Parameters
+import io.ktor.http.ParametersBuilder
+import io.ktor.utils.io.ByteWriteChannel
 import tel.schich.postfixrestconnector.Endpoint
 import tel.schich.postfixrestconnector.PolicyRequestHandler
-import java.net.http.HttpClient.newHttpClient
-import java.nio.channels.SocketChannel
+import tel.schich.postfixrestconnector.TestHttpClient
 import java.util.UUID
 
-class MockPolicyRequestHandler(endpoint: Endpoint) : PolicyRequestHandler(endpoint, newHttpClient(), "test") {
-    private var data: List<Pair<String, String>>? = null
-    override fun handleRequest(ch: SocketChannel, id: UUID, params: List<Pair<String, String>>) {
+class MockPolicyRequestHandler(endpoint: Endpoint) : PolicyRequestHandler(endpoint, TestHttpClient, "test") {
+    private var data: Parameters? = null
+    override suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, params: Parameters) {
         data = params
-        super.handleRequest(ch, id, params)
     }
 
-    fun getData(): List<Pair<String, String>>? {
-        val copy = data
-        data = null
-        return copy
+    fun getData(): Parameters? {
+        val data = this.data ?: return null
+
+        return with(ParametersBuilder()) {
+            appendAll(data)
+            build()
+        }
     }
+
+    fun getDataAsPairs() = getData()?.entries()?.flatMap { entry -> entry.value.map { Pair(entry.key, it) } }
 }

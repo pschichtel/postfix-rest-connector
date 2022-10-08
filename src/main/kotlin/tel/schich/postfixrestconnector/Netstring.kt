@@ -4,9 +4,7 @@ import java.io.IOException
 
 object Netstring {
     private const val EMPTY = "0:,"
-    
-    @JvmStatic
-    @Throws(IOException::class)
+
     fun parseOne(s: String): String {
         val strings = parse(s)
         if (strings.size > 1) {
@@ -15,8 +13,6 @@ object Netstring {
         return strings[0]
     }
 
-    @JvmStatic
-    @Throws(IOException::class)
     fun parse(s: String): List<String> {
         var colonPos: Int
         var offset = 0
@@ -32,9 +28,7 @@ object Netstring {
                 runLength = s.substring(offset, colonPos).toInt()
                 commaPos = colonPos + 1 + runLength
                 if (s[commaPos] != ',') {
-                    throw IOException(
-                        "Expected ',' at " + offset + ", but got '" + s[commaPos] + "' after data!"
-                    )
+                    throw IOException("Expected ',' at " + offset + ", but got '" + s[commaPos] + "' after data!")
                 }
                 out.add(s.substring(colonPos + 1, commaPos))
                 offset = commaPos + 1
@@ -47,7 +41,6 @@ object Netstring {
         return out
     }
 
-    @JvmStatic
     fun compile(strings: List<String>): String {
         if (strings.isEmpty()) {
             return ""
@@ -59,7 +52,6 @@ object Netstring {
         return out.toString()
     }
 
-    @JvmStatic
     fun compileOne(s: String): String {
         if (s.isEmpty()) {
             return EMPTY

@@ -1,9 +1,9 @@
 package tel.schich.postfixrestconnector
 
 import io.ktor.http.Url
+import io.ktor.network.sockets.InetSocketAddress
+import io.ktor.network.sockets.SocketAddress
 import kotlinx.serialization.KSerializer
-import java.net.InetSocketAddress
-import java.net.SocketAddress
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -26,7 +26,7 @@ data class Endpoint(@SerialName("name") val name: String,
                     @SerialName("bind-address") val bindAddress: String,
                     @SerialName("bind-port") val bindPort: Int,
                     @SerialName("auth-token") val authToken: String,
-                    @SerialName("request-timeout") val requestTimeout: Int,
+                    @SerialName("request-timeout") val requestTimeout: Long,
                     @SerialName("mode") val mode: String,
                     @SerialName("list-separator") val listSeparator: String = DEFAULT_RESPONSE_VALUE_SEPARATOR,
 ) {
