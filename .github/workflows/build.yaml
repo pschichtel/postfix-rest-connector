@@ -11,17 +11,20 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - uses: actions/cache@v2
+      - name: Validate Gradle wrapper
+        uses: gradle/wrapper-validation-action@e6e38bacfdf1a337459f332974bb2327a31aaf4b
+      - name: Check
+        uses: gradle/gradle-build-action@v1.3.3
         with:
-          path: |
-            ~/.m2/repository
-            ~/jib-base-cache
-            ~/jib-app-cache
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-      - name: Publish package
-        run: mvn compile jib:build -Djib.baseImageCache=~/jib-base-cache -Djib.applicationCache=~/jib-app-cache
+          arguments: check
+          wrapper-cache-enabled: true
+          dependencies-cache-enabled: true
+      - name: Build
+        uses: gradle/gradle-build-action@v1.3.3
         env:
-          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
-          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        with:
+          arguments: jib
+          wrapper-cache-enabled: true
+          dependencies-cache-enabled: true

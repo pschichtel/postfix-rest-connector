@@ -6,8 +6,7 @@ plugins {
     `maven-publish`
     kotlin("jvm")
     kotlin("plugin.serialization")
-    id("org.jetbrains.dokka")
-    id("io.github.gradle-nexus.publish-plugin")
+    id("com.google.cloud.tools.jib")
     id("io.gitlab.arturbosch.detekt")
 }
 
@@ -42,58 +41,22 @@ tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "17"
 }
 
-val sourcesJar by tasks.creating(Jar::class) {
-    dependsOn(JavaPlugin.CLASSES_TASK_NAME)
-    archiveClassifier.set("sources")
-    from(sourceSets["main"].allSource)
-}
-
-val javadocJar by tasks.creating(Jar::class) {
-    dependsOn(tasks.dokkaJavadoc)
-    archiveClassifier.set("javadoc")
-    from(tasks.dokkaJavadoc)
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            from(components["java"])
-            artifact(sourcesJar)
-            artifact(javadocJar)
-            pom {
-                name.set("Postfix REST Connector")
-                description.set("A simple TCP server that can be used as tcp lookup, socketmap lookup or policy check server for the Postfix mail server.")
-                url.set("https://github.com/pschichtel/postfix-rest-connector")
-                licenses {
-                    license {
-                        name.set("GPLv3")
-                        url.set("http://www.gnu.org/licenses/gpl.txt")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("pschichtel")
-                        name.set("Phillip Schichtel")
-                        email.set("phillip@schich.tel")
-                    }
-                }
-                scm {
-                    url.set("https://github.com/pschichtel/postfix-rest-connector")
-                    connection.set("scm:git:https://github.com/pschichtel/postfix-rest-connector")
-                    developerConnection.set("scm:git:git@github.com:pschichtel/postfix-rest-connector")
-                }
+jib {
+    from {
+        image = "eclipse-temurin:17-jre-alpine"
+    }
+    container {
+        ports = listOf("8080")
+    }
+    to {
+        val dockerHubUsername = System.getenv("DOCKERHUB_USERNAME")
+        val dockerHubPassword = System.getenv("DOCKERHUB_PASSWORD")
+        if (dockerHubUsername != null && dockerHubPassword != null) {
+            auth {
+                username = dockerHubUsername
+                password = dockerHubPassword
             }
         }
-    }
-}
-
-signing {
-    useGpgCmd()
-    sign(publishing.publications["mavenJava"])
-}
-
-nexusPublishing {
-    repositories {
-        sonatype()
+        image = "pschichtel/$name:$version"
     }
 }
