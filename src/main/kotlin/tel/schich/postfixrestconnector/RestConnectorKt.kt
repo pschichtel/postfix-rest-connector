@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory
 import java.net.StandardSocketOptions.TCP_NODELAY
 import java.nio.channels.SelectionKey.OP_ACCEPT
 import java.nio.channels.SelectionKey.OP_READ
-import kotlin.jvm.Throws
 
 private val LOGGER: Logger = LoggerFactory.getLogger(RestConnector::class.java)
 private const val READ_BUFFER_SIZE = 2048
@@ -32,12 +31,10 @@ class RestConnector : Closeable {
     @Volatile
     private var keepPolling: Boolean = true
 
-    @Throws(IOException::class)
     fun start(provider: SelectorProvider, config: Configuration) {
         start(provider, Json.Default, config)
     }
 
-    @Throws(IOException::class)
     fun start(provider: SelectorProvider, configPath: Path) {
         val content = Files.readString(configPath)
         val mapper = Json
@@ -46,7 +43,6 @@ class RestConnector : Closeable {
         start(provider, mapper, config);
     }
 
-    @Throws(IOException::class)
     fun start(provider: SelectorProvider, mapper: Json, config: Configuration) {
 
         if (selector != null) {
@@ -63,7 +59,13 @@ class RestConnector : Closeable {
 
             val request = when (endpoint.mode) {
                 TcpLookupHandler.MODE_NAME -> TcpLookupHandler(endpoint, restClient, mapper, config.userAgent)
-                SocketmapLookupHandler.MODE_NAME -> SocketmapLookupHandler(endpoint, restClient, mapper, config.userAgent)
+                SocketmapLookupHandler.MODE_NAME -> SocketmapLookupHandler(
+                    endpoint,
+                    restClient,
+                    mapper,
+                    config.userAgent
+                )
+
                 PolicyRequestHandler.MODE_NAME -> PolicyRequestHandler(endpoint, restClient, config.userAgent)
                 else -> error("Unknown mode " + endpoint.mode + "!")
             }
@@ -134,7 +136,6 @@ class RestConnector : Closeable {
         this.stop();
     }
 
-    @Throws(IOException::class)
     private fun readChannel(ch: SocketChannel, buffer: ByteBuffer, state: ConnectionState) {
         buffer.clear()
         val bytesRead = try {
@@ -152,10 +153,10 @@ class RestConnector : Closeable {
         state.read(ch, buffer)
     }
 
-    @Throws(IOException::class)
     private fun configureChannel(ch: SelectableChannel) {
         ch.configureBlocking(false)
-        if (ch is SocketChannel)
+        if (ch is SocketChannel) {
             ch.setOption(TCP_NODELAY, true)
         }
     }
+}

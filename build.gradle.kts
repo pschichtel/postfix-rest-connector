@@ -60,3 +60,8 @@ jib {
         image = "pschichtel/$name:$version"
     }
 }
+
+detekt {
+    parallel = true
+    config = files(project.rootDir.resolve("detekt.yml"))
+}
