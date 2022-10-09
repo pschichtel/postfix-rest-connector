@@ -1,8 +1,6 @@
 package tel.schich.postfixrestconnector
 
 import io.ktor.http.Url
-import io.ktor.network.sockets.InetSocketAddress
-import io.ktor.network.sockets.SocketAddress
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

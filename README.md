@@ -13,7 +13,7 @@ A simple TCP server that can be used as remote lookup for the Postfix mail serve
 ```
 
 * `user-agent`: The user-agent to use for outgoing web requests
-* `endpoints`: The list of endpoints to setup
+* `endpoints`: The list of endpoints to set up
 
 ### Endpoint
 
