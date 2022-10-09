@@ -9,6 +9,8 @@ import io.ktor.client.utils.EmptyContent
 import io.ktor.http.HttpMethod
 import io.ktor.http.takeFrom
 import mu.KLogger
+import java.io.IOException
+import java.net.ConnectException
 import java.util.UUID
 
 suspend fun HttpClient.connectorEndpointRequest(
@@ -62,4 +64,9 @@ fun encodeLookupResponse(values: Iterable<String>, separator: String): String {
         out.append(separator).append(it.next())
     }
     return out.toString()
+}
+
+fun ioExceptionMessage(e: IOException): String = e.message ?: when (e) {
+    is ConnectException -> "Failed to connect"
+    else -> "unknown IO error"
 }

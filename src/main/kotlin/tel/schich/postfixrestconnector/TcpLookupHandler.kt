@@ -55,7 +55,7 @@ class TcpLookupHandler(
             throw e
         } catch (e: IOException) {
             logger.error(e) { "$id - error occurred during request!" }
-            writeError(ch, id, e.message)
+            writeError(ch, id, ioExceptionMessage(e))
             return
         }
 

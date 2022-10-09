@@ -52,7 +52,7 @@ open class PolicyRequestHandler(
             throw e
         } catch (e: IOException) {
             logger.error(e) { "$id - error occurred during request!" }
-            writeTemporaryError(ch, id, e.message ?: "unknown IO error")
+            writeTemporaryError(ch, id, ioExceptionMessage(e))
             return
         }
 
