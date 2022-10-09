@@ -1,7 +1,7 @@
 package tel.schich.postfixrestconnector
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.java.Java
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -25,6 +25,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 import mu.KotlinLogging
+import java.net.http.HttpClient.Version.HTTP_2
 
 private val logger = KotlinLogging.logger {  }
 
@@ -52,7 +53,10 @@ class RestConnector {
 
     suspend fun start(config: Configuration): Session {
         val selector = SelectorManager(Dispatchers.IO)
-        val restClient = HttpClient(CIO) {
+        val restClient = HttpClient(Java) {
+            engine {
+                protocolVersion = HTTP_2
+            }
             install(HttpTimeout)
             install(ContentNegotiation) {
                 json()
