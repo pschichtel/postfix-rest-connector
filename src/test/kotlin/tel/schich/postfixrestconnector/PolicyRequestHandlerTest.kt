@@ -1,9 +1,9 @@
 package tel.schich.postfixrestconnector
 
 import io.ktor.http.Url
+import io.ktor.utils.io.ByteChannel
 import kotlinx.coroutines.runBlocking
 import tel.schich.postfixrestconnector.mocks.MockPolicyRequestHandler
-import tel.schich.postfixrestconnector.mocks.MockSocketChannel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -27,7 +27,8 @@ class PolicyRequestHandlerTest {
         val firstLine = "a=b\n\n"
         val buf = stringBuffer(firstLine)
         val state = handler.createState()
-        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        state.read(ByteChannel(), buf)
+        assertEquals(0, buf.remaining())
         val data = handler.getDataAsPairs()
         assertNotNull(data)
         assertEquals(1, data.size)
@@ -39,7 +40,8 @@ class PolicyRequestHandlerTest {
         val firstLine = "a=b\n\na"
         val buf = stringBuffer(firstLine)
         val state = handler.createState()
-        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        state.read(ByteChannel(), buf)
+        assertEquals(0, buf.remaining())
         val data = handler.getDataAsPairs()
         assertNotNull(data)
         assertEquals(1, data.size)
@@ -52,11 +54,13 @@ class PolicyRequestHandlerTest {
         val secondLine = "\n"
         val state = handler.createState()
         var buf = stringBuffer(firstLine)
-        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        state.read(ByteChannel(), buf)
+        assertEquals(0, buf.remaining())
         var data = handler.getDataAsPairs()
         assertNull(data)
         buf = stringBuffer(secondLine)
-        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        state.read(ByteChannel(), buf)
+        assertEquals(0, buf.remaining())
         data = handler.getDataAsPairs()
         assertEquals(listOf(Pair("a", "b")), data)
     }
@@ -68,13 +72,16 @@ class PolicyRequestHandlerTest {
         val rest = "=c\n\n"
         val state = handler.createState()
         var buf = stringBuffer(firstLine)
-        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        state.read(ByteChannel(), buf)
+        assertEquals(0, buf.remaining())
         assertNull(handler.getData())
         buf = stringBuffer(secondLine)
-        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        state.read(ByteChannel(), buf)
+        assertEquals(0, buf.remaining())
         assertEquals(listOf(Pair("a", "b")), handler.getDataAsPairs())
         buf = stringBuffer(rest)
-        assertEquals(buf.remaining().toLong(), state.read(MockSocketChannel.DEFAULT, buf))
+        state.read(ByteChannel(), buf)
+        assertEquals(0, buf.remaining())
         assertEquals(listOf(Pair("a", "c")), handler.getDataAsPairs())
     }
 }

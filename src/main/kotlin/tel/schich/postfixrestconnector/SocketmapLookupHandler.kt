@@ -15,9 +15,11 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import tel.schich.postfixrestconnector.Netstring.compileOne
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.UUID
+import kotlin.text.Charsets.UTF_8
 
 private val logger = KotlinLogging.logger {  }
 
@@ -26,11 +28,9 @@ open class SocketmapLookupHandler(
     private val http: HttpClient,
 ) : PostfixRequestHandler {
 
-    override fun createState(): ConnectionState {
-        return SocketMapConnectionState()
-    }
+    override fun createState(): ConnectionState = SocketMapConnectionState()
 
-    protected open suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, requestData: String) {
+    open suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, requestData: String) {
         logger.info { "$id - socketmap-lookup request on endpoint ${endpoint.name}: $requestData" }
         val spacePos = requestData.indexOf(' ')
         if (spacePos == -1) {
@@ -52,7 +52,7 @@ open class SocketmapLookupHandler(
             }
         } catch (e: HttpRequestTimeoutException) {
             logger.error(e) { "$id - request timeout out!" }
-            writeTimeoutError(ch, id, "REST request timed out: " + e.message)
+            writeTimeoutError(ch, id, "REST request timed out: ${e.message}")
             return
         } catch (e: CancellationException) {
             logger.error(e) { "$id - error occurred during request!" }
@@ -84,7 +84,7 @@ open class SocketmapLookupHandler(
                 // REST call failed due to user error -> emit permanent error (connector is misconfigured)
                 writePermError(ch, id, "REST server signaled a user error, is the connector misconfigured? Code: $statusCode")
             } else if (statusCode.value in 500..599) {
-                // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
+                // REST call failed due to a server err -> emit temporary error (REST server might be overloaded
                 writeTempError(ch, id, "REST server had an internal error: $statusCode")
             } else {
                 writeTempError(ch, id, "REST server responded with an unspecified code: $statusCode")
@@ -101,56 +101,6 @@ open class SocketmapLookupHandler(
                 e.addSuppressed(ex)
                 logger.error(e) { "$id - While recovering from an error failed to write response!" }
             }
-        }
-    }
-
-    private inner class SocketMapConnectionState : BaseConnectionState() {
-        private var state = STATE_READ_LENGTH
-        private var length: Long = 0
-        private var pendingRead: StringBuilder? = StringBuilder()
-
-        override suspend fun read(ch: ByteWriteChannel, buffer: ByteBuffer): Long {
-            var bytesRead: Long = 0
-            while (buffer.remaining() > 0) {
-                val c = buffer.get()
-                bytesRead++
-                when (state) {
-                    STATE_READ_LENGTH -> if (c == ':'.code.toByte()) {
-                        state = STATE_READ_VALUE
-                        pendingRead!!.setLength(0)
-                    } else {
-                        val digit = c - '0'.code.toByte()
-                        if (digit < 0 || digit > 9) {
-                            writeBrokenRequestErrorAndClose(ch, id, "Expected a digit, but got: " + Char(c.toUShort()))
-                        }
-                        length = length * 10 + digit
-                    }
-
-                    STATE_READ_VALUE -> {
-                        if (pendingRead!!.length < length) {
-                            pendingRead!!.append(Char(c.toUShort()))
-                        }
-                        if (pendingRead!!.length >= length) {
-                            state = STATE_READ_END
-                        }
-                    }
-
-                    STATE_READ_END -> if (c == END.code.toByte()) {
-                        state = STATE_READ_LENGTH
-                        length = 0
-                        handleRequest(ch, id, pendingRead.toString())
-                    } else {
-                        writeBrokenRequestErrorAndClose(ch, id, "Expected comma, but got: " + Char(c.toUShort()))
-                    }
-
-                    else -> writeBrokenRequestErrorAndClose(ch, id, "Reached state $state, but I don't know what to do...")
-                }
-            }
-            return bytesRead
-        }
-
-        override suspend fun close() {
-            pendingRead = null
         }
     }
 
@@ -197,6 +147,52 @@ open class SocketmapLookupHandler(
         ch.flush()
     }
 
+    private inner class SocketMapConnectionState : ConnectionState() {
+        private var state = STATE_READ_LENGTH
+        private var length = 0L
+        private val pendingRead = ByteArrayOutputStream()
+
+        override suspend fun read(ch: ByteWriteChannel, buffer: ByteBuffer) {
+            while (buffer.remaining() > 0) {
+                val c = buffer.get().toInt()
+                when (state) {
+                    STATE_READ_LENGTH -> when (c) {
+                        LENGTH_VALUE_SEPARATOR -> {
+                            state = STATE_READ_VALUE
+                        }
+                        else -> {
+                            val digit = c - '0'.code
+                            if (digit < 0 || digit > 9) {
+                                writeBrokenRequestErrorAndClose(ch, id, "Expected a digit, but got: ${c.toChar()} (code: $c)")
+                            }
+                            length = length * 10 + digit
+                        }
+                    }
+                    STATE_READ_VALUE -> {
+                        if (pendingRead.size() < length) {
+                            pendingRead.write(c)
+                        }
+                        if (pendingRead.size() >= length) {
+                            state = STATE_READ_END
+                        }
+                    }
+                    STATE_READ_END -> when (c) {
+                        END -> {
+                            state = STATE_READ_LENGTH
+                            length = 0
+                            handleRequest(ch, id, String(pendingRead.toByteArray(), UTF_8))
+                            pendingRead.reset()
+                        }
+                        else -> {
+                            writeBrokenRequestErrorAndClose(ch, id, "Expected comma, but got: ${c.toChar()} (code: $c)")
+                        }
+                    }
+                    else -> writeBrokenRequestErrorAndClose(ch, id, "Reached state $state, but I don't know what to do...")
+                }
+            }
+        }
+    }
+
     companion object {
         private const val STATE_READ_LENGTH = 1
         private const val STATE_READ_VALUE = 2
@@ -204,6 +200,7 @@ open class SocketmapLookupHandler(
 
         const val MODE_NAME = "socketmap-lookup"
         private const val MAXIMUM_RESPONSE_LENGTH = 10000
-        private const val END = ','
+        private const val END = ','.code
+        private const val LENGTH_VALUE_SEPARATOR = ':'.code
     }
 }

@@ -21,15 +21,22 @@ object UrlSerializer : KSerializer<Url> {
 }
 
 @Serializable
-data class Endpoint(@SerialName("name") val name: String,
-                    @Serializable(with = UrlSerializer::class)
-                    @SerialName("target") val target: Url,
-                    @SerialName("bind-address") val bindAddress: String,
-                    @SerialName("bind-port") val bindPort: Int,
-                    @SerialName("auth-token") val authToken: String,
-                    @SerialName("request-timeout") val requestTimeout: Long = DEFAULT_REQUEST_TIMEOUT_MILLIS,
-                    @SerialName("mode") val mode: String,
-                    @SerialName("list-separator") val listSeparator: String = DEFAULT_RESPONSE_VALUE_SEPARATOR,
-) {
-    fun address(): SocketAddress = InetSocketAddress(bindAddress, bindPort)
-}
+data class Endpoint(
+    @SerialName("name")
+    val name: String,
+    @Serializable(with = UrlSerializer::class)
+    @SerialName("target")
+    val target: Url,
+    @SerialName("bind-address")
+    val bindAddress: String,
+    @SerialName("bind-port")
+    val bindPort: Int,
+    @SerialName("auth-token")
+    val authToken: String,
+    @SerialName("request-timeout")
+    val requestTimeout: Long = DEFAULT_REQUEST_TIMEOUT_MILLIS,
+    @SerialName("mode")
+    val mode: String,
+    @SerialName("list-separator")
+    val listSeparator: String = DEFAULT_RESPONSE_VALUE_SEPARATOR,
+)

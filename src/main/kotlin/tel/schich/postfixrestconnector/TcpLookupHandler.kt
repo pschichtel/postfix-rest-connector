@@ -14,11 +14,11 @@ import io.ktor.utils.io.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
+import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.net.URLDecoder
-import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.util.UUID
+import kotlin.text.Charsets.UTF_8
 
 private val logger = KotlinLogging.logger {  }
 
@@ -26,16 +26,16 @@ class TcpLookupHandler(
     override val endpoint: Endpoint,
     private val http: HttpClient,
 ) : PostfixRequestHandler {
-    override fun createState() = TcpConnectionState()
+    override fun createState(): ConnectionState = TcpConnectionState()
 
-    private suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, rawRequest: String) {
+    suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, rawRequest: String) {
         logger.info { "$id - tcp-lookup request on endpoint ${endpoint.name}: $rawRequest" }
-        if (rawRequest.length <= LOOKUP_PREFIX.length || !rawRequest.startsWith(LOOKUP_PREFIX)) {
+        if (rawRequest.length <= TcpLookup.LOOKUP_PREFIX.length || !rawRequest.startsWith(TcpLookup.LOOKUP_PREFIX)) {
             writeError(ch, id, "Broken request!")
             ch.close(cause = null)
             return
         }
-        val lookupKey = decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length).trim { it <= ' ' })
+        val lookupKey = TcpLookup.decodeRequest(rawRequest.substring(TcpLookup.LOOKUP_PREFIX.length).trim { it <= ' ' })
 
         val response = try {
             http.connectorEndpointRequest(endpoint, id, logger) {
@@ -81,7 +81,7 @@ class TcpLookupHandler(
                     "REST server signaled a user error, is the connector misconfigured? Code: $statusCode"
                 )
             } else if (statusCode.value in 500..599) {
-                // REST call failed due to an server err -> emit temporary error (REST server might be overloaded
+                // REST call failed due to a server err -> emit temporary error (REST server might be overloaded
                 writeError(ch, id, "REST server had an internal error: $statusCode")
             } else {
                 writeError(ch, id, "REST server responded with an unspecified code: $statusCode")
@@ -101,29 +101,6 @@ class TcpLookupHandler(
         }
     }
 
-    inner class TcpConnectionState : BaseConnectionState() {
-        private var pendingRead: StringBuilder? = StringBuilder()
-
-        override suspend fun read(ch: ByteWriteChannel, buffer: ByteBuffer): Long {
-            var bytesRead: Long = 0
-            while (buffer.remaining() > 0) {
-                val c = buffer.get()
-                bytesRead++
-                if (c == END.code.toByte()) {
-                    handleRequest(ch, id, pendingRead.toString())
-                    pendingRead!!.setLength(0)
-                } else {
-                    pendingRead!!.append(Char(c.toUShort()))
-                }
-            }
-            return bytesRead
-        }
-
-        override suspend fun close() {
-            pendingRead = null
-        }
-    }
-
     private suspend fun writeSuccessfulResponse(ch: ByteWriteChannel, id: UUID, data: List<String>, separator: String) {
         writeResponse(ch, id, 200, encodeLookupResponse(data, separator))
     }
@@ -132,20 +109,20 @@ class TcpLookupHandler(
         writeResponse(ch, id, 500, "$id - key not found")
     }
 
-    private suspend fun writeError(ch: ByteWriteChannel, id: UUID, message: String?) {
-        writeResponse(ch, id, 400, "$id - $message")
-    }
-
     private suspend fun writeInvalidDataError(ch: ByteWriteChannel, id: UUID, response: HttpResponse, e: Exception) {
         val bodyText = response.bodyAsText()
         logger.error(e) { "$id - Received invalid data with Content-Type '${response.contentType()}': $bodyText" }
         writeError(ch, id, "REST connector received invalid data!")
     }
 
-    private suspend fun writeResponse(ch: ByteWriteChannel, id: UUID, code: Int, data: String?) {
-        val text = code.toString() + ' ' + encodeResponseData(data) + END
+    private suspend fun writeError(ch: ByteWriteChannel, id: UUID, message: String?) {
+        writeResponse(ch, id, 400, "$id - $message")
+    }
+
+    private suspend fun writeResponse(ch: ByteWriteChannel, id: UUID, code: Int, data: String) {
+        val text = code.toString() + ' ' + TcpLookup.encodeResponse(data) + TcpLookup.END_CHAR
         val payload = Charsets.US_ASCII.encode(text)
-        if (payload.remaining() > MAXIMUM_RESPONSE_LENGTH) {
+        if (payload.remaining() > TcpLookup.MAXIMUM_RESPONSE_LENGTH) {
             throw IOException("$id - response to long")
         }
         logger.info { "$id - Response: $text" }
@@ -153,23 +130,25 @@ class TcpLookupHandler(
         ch.flush()
     }
 
+    private inner class TcpConnectionState : ConnectionState() {
+        private val pendingRead = ByteArrayOutputStream()
+
+        override suspend fun read(ch: ByteWriteChannel, buffer: ByteBuffer) {
+            while (buffer.remaining() > 0) {
+                when (val c = buffer.get().toInt()) {
+                    TcpLookup.END_CHAR_CODE -> {
+                        handleRequest(ch, id, String(pendingRead.toByteArray(), UTF_8))
+                        pendingRead.reset()
+                    }
+                    else -> {
+                        pendingRead.write(c)
+                    }
+                }
+            }
+        }
+    }
+
     companion object {
         const val MODE_NAME = "tcp-lookup"
-        private const val LOOKUP_PREFIX = "get "
-        private const val MAXIMUM_RESPONSE_LENGTH = 4096
-        private const val END = '\n'
-        private const val PLUS = "+"
-        private const val PLUS_URL_ENCODED = "%2B"
-        private const val SPACE_URL_ENCODED = "%20"
-
-        fun decodeURLEncodedData(data: String): String {
-            return URLDecoder.decode(data.replace(PLUS, PLUS_URL_ENCODED), Charsets.UTF_8)
-        }
-
-        fun encodeResponseData(data: String?): String {
-            return URLEncoder.encode(data, Charsets.UTF_8)
-                .replace(PLUS, SPACE_URL_ENCODED)
-                .replace(PLUS_URL_ENCODED, PLUS)
-        }
     }
 }

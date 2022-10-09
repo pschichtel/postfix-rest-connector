@@ -18,9 +18,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.UUID
+import kotlin.text.Charsets.UTF_8
 
 private val logger = KotlinLogging.logger {  }
 
@@ -28,11 +30,9 @@ open class PolicyRequestHandler(
     override val endpoint: Endpoint,
     private val http: HttpClient,
 ) : PostfixRequestHandler {
-    override fun createState(): ConnectionState {
-        return PolicyConnectionState()
-    }
+    override fun createState(): ConnectionState = PolicyConnectionState()
 
-    protected open suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, params: Parameters) {
+    open suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, params: Parameters) {
         logger.info { "$id - Policy request on endpoint ${endpoint.name}: $params" }
 
         val response = try {
@@ -69,7 +69,7 @@ open class PolicyRequestHandler(
                 // REST call failed due to user error -> emit permanent error (connector is misconfigured)
                 writePermanentError(ch, id, "REST server signaled a user error, is the connector misconfigured?")
             } else if (statusCode.value in 500..599) {
-                // REST call failed due to an server err -> temporary error (REST server might be overloaded)
+                // REST call failed due to a server err -> temporary error (REST server might be overloaded)
                 writeTemporaryError(ch, id, "REST server had an internal error!")
             }
         } catch (e: ContentConvertException) {
@@ -84,56 +84,6 @@ open class PolicyRequestHandler(
                 e.addSuppressed(ex)
                 logger.error(e) { "$id - While recovering from an error failed to write response!" }
             }
-        }
-    }
-
-    private inner class PolicyConnectionState : BaseConnectionState() {
-        private var state = STATE_READ_NAME
-        private var pendingPairName: String? = null
-        private var pendingRead: StringBuilder? = StringBuilder()
-        private var pendingRequest: ParametersBuilder? = ParametersBuilder()
-
-        override suspend fun read(ch: ByteWriteChannel, buffer: ByteBuffer): Long {
-            var bytesRead: Long = 0
-            while (buffer.remaining() > 0) {
-                val c = buffer.get()
-                bytesRead++
-                when (state) {
-                    STATE_READ_NAME -> when (c) {
-                        LINE_END.code.toByte() -> {
-                            handleRequest(ch, id, pendingRequest?.build() ?: Parameters.Empty)
-                            pendingRequest = ParametersBuilder()
-                        }
-                        '='.code.toByte() -> {
-                            pendingPairName = pendingRead.toString()
-                            pendingRead!!.setLength(0)
-                            state = STATE_READ_VALUE
-                        }
-                        else -> {
-                            pendingRead!!.append(Char(c.toUShort()))
-                        }
-                    }
-
-                    STATE_READ_VALUE -> if (c == LINE_END.code.toByte()) {
-                        pendingRequest!!.append(pendingPairName!!, pendingRead.toString())
-                        pendingRead!!.setLength(0)
-                        state = STATE_READ_NAME
-                    } else {
-                        pendingRead!!.append(Char(c.toUShort()))
-                    }
-
-                    else -> {
-                        writePermanentError(ch, id, "Reached state $state, but I don't know what to do...")
-                        ch.close(cause = null)
-                    }
-                }
-            }
-            return bytesRead
-        }
-
-        override suspend fun close() {
-            pendingRead = null
-            pendingRequest = null
         }
     }
 
@@ -161,11 +111,61 @@ open class PolicyRequestHandler(
         ch.flush()
     }
 
+    private inner class PolicyConnectionState : ConnectionState() {
+        private var state = STATE_READ_NAME
+        private var pendingPairName: String? = null
+        private val pendingRead = ByteArrayOutputStream()
+        private val pendingRequest = ParametersBuilder()
+
+        private fun pendingReadAsString(): String {
+            val string = String(pendingRead.toByteArray(), UTF_8)
+            pendingRead.reset()
+            return string
+        }
+
+        override suspend fun read(ch: ByteWriteChannel, buffer: ByteBuffer) {
+            while (buffer.remaining() > 0) {
+                val c = buffer.get().toInt()
+                when (state) {
+                    STATE_READ_NAME -> when (c) {
+                        LINE_END -> {
+                            handleRequest(ch, id, pendingRequest.build())
+                            pendingRequest.clear()
+                        }
+                        VALUE_SEPARATOR -> {
+                            pendingPairName = pendingReadAsString()
+                            state = STATE_READ_VALUE
+                        }
+                        else -> {
+                            pendingRead.write(c)
+                        }
+                    }
+
+                    STATE_READ_VALUE -> when (c) {
+                        LINE_END -> {
+                            pendingRequest.append(pendingPairName!!, pendingReadAsString())
+                            state = STATE_READ_NAME
+                        }
+                        else -> {
+                            pendingRead.write(c)
+                        }
+                    }
+
+                    else -> {
+                        writePermanentError(ch, id, "Reached state $state, but I don't know what to do...")
+                        ch.close(cause = null)
+                    }
+                }
+            }
+        }
+    }
+
     companion object {
         private const val STATE_READ_NAME = 1
         private const val STATE_READ_VALUE = 2
 
         const val MODE_NAME = "policy"
-        private const val LINE_END = '\n'
+        private const val LINE_END = '\n'.code
+        private const val VALUE_SEPARATOR = '='.code
     }
 }

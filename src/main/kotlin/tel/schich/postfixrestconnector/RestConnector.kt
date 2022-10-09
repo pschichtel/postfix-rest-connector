@@ -6,6 +6,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.network.selector.SelectorManager
+import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.ServerSocket
 import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket
@@ -39,6 +40,7 @@ class Session(
     }
 
     fun close() {
+        job.cancel()
         for (listenSocket in listenSockets) {
             listenSocket.close()
         }
@@ -66,7 +68,7 @@ class RestConnector {
             val listenSocket = aSocket(selector)
                 .tcp()
                 .tcpNoDelay()
-                .bind(endpoint.address())
+                .bind(InetSocketAddress(endpoint.bindAddress, endpoint.bindPort))
 
             logger.info { "Bound endpoint ${endpoint.name} to address: ${listenSocket.localAddress}" }
 

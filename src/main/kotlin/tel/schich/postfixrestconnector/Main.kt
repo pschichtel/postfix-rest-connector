@@ -1,5 +1,7 @@
 package tel.schich.postfixrestconnector
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
@@ -14,7 +16,9 @@ suspend fun main(args: Array<String>) {
         exitProcess(1)
     }
 
-    val configContent = Files.readString(configPath)
+    val configContent = withContext(Dispatchers.IO) {
+        Files.readString(configPath)
+    }
     val config = Json.decodeFromString<Configuration>(configContent)
     val connector = RestConnector()
     val session = connector.start(config)
