@@ -1,12 +1,17 @@
 package tel.schich.postfixrestconnector
 
 import io.ktor.client.HttpClient
+import io.ktor.client.call.NoTransformationFoundException
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import tel.schich.postfixrestconnector.Netstring.compileOne
@@ -45,14 +50,14 @@ open class SocketmapLookupHandler(
                     parameters.append("key", lookupKey)
                 }
             }
+        } catch (e: HttpRequestTimeoutException) {
+            logger.error(e) { "$id - request timeout out!" }
+            writeTimeoutError(ch, id, "REST request timed out: " + e.message)
+            return
         } catch (e: CancellationException) {
             logger.error(e) { "$id - error occurred during request!" }
             withContext(NonCancellable) {
-                if (e is TimeoutCancellationException) {
-                    writeTimeoutError(ch, id, "REST request timed out: " + e.message)
-                } else {
-                    writeTempError(ch, id, e.message)
-                }
+                writeTempError(ch, id, e.message)
             }
             throw e
         } catch (e: IOException) {
@@ -67,10 +72,7 @@ open class SocketmapLookupHandler(
             if (statusCode == HttpStatusCode.OK) {
                 // REST call successful -> return data
                 val data = response.body<List<String>>()
-                if (data == null) {
-                    logger.warn { "$id - No result!" }
-                    writeTempError(ch, id, "REST result was broken!")
-                } else if (data.isEmpty()) {
+                if (data.isEmpty()) {
                     writeNotFoundResponse(ch, id)
                 } else {
                     logger.info { "$id - Response: $data" }
@@ -87,6 +89,10 @@ open class SocketmapLookupHandler(
             } else {
                 writeTempError(ch, id, "REST server responded with an unspecified code: $statusCode")
             }
+        } catch (e: ContentConvertException) {
+            writeInvalidDataError(ch, id, response, e)
+        } catch (e: NoTransformationFoundException) {
+            writeInvalidDataError(ch, id, response, e)
         } catch (e: IOException) {
             logger.error(e) { "$id - Failed to write response!" }
             try {
@@ -172,6 +178,12 @@ open class SocketmapLookupHandler(
 
     private suspend fun writePermError(ch: ByteWriteChannel, id: UUID, message: String) {
         writeResponse(ch, id, "PERM $id - $message")
+    }
+
+    private suspend fun writeInvalidDataError(ch: ByteWriteChannel, id: UUID, response: HttpResponse, e: Exception) {
+        val bodyText = response.bodyAsText()
+        logger.error(e) { "$id - Received invalid data with Content-Type '${response.contentType()}': $bodyText" }
+        writeTempError(ch, id, "REST connector received invalid data!")
     }
 
     private suspend fun writeResponse(ch: ByteWriteChannel, id: UUID, data: String) {

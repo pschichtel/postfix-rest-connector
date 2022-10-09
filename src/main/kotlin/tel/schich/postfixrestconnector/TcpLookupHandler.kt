@@ -44,7 +44,7 @@ class TcpLookupHandler(
                 }
             }
         } catch (e: HttpRequestTimeoutException) {
-            logger.error(e) { "$id - request timeout out!!" }
+            logger.error(e) { "$id - request timeout out!" }
             writeError(ch, id, "REST request timed out: " + e.message)
             return
         } catch (e: CancellationException) {

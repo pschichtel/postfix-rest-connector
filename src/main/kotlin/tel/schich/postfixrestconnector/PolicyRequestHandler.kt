@@ -1,17 +1,21 @@
 package tel.schich.postfixrestconnector
 
 import io.ktor.client.HttpClient
+import io.ktor.client.call.NoTransformationFoundException
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.http.ParametersBuilder
+import io.ktor.http.contentType
+import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.io.IOException
@@ -36,20 +40,20 @@ open class PolicyRequestHandler(
                 method = HttpMethod.Post
                 setBody(FormDataContent(params))
             }
+        } catch (e: HttpRequestTimeoutException) {
+            logger.error(e) { "$id - request timeout out!" }
+            writeTemporaryError(ch, id, "REST request timed out: " + e.message)
+            return
         } catch (e: CancellationException) {
             logger.error(e) { "$id - error occurred during request!" }
             withContext(NonCancellable) {
-                if (e is TimeoutCancellationException) {
-                    writeTemporaryError(ch, id, "REST request timed out: " + e.message)
-                } else {
-                    writeTemporaryError(ch, id, e.message)
-                }
+                writeTemporaryError(ch, id, e.message ?: "unknown coroutine cancellation")
                 ch.close(e)
             }
             throw e
         } catch (e: IOException) {
             logger.error(e) { "$id - error occurred during request!" }
-            writeTemporaryError(ch, id, e.message)
+            writeTemporaryError(ch, id, e.message ?: "unknown IO error")
             throw e
         }
 
@@ -68,6 +72,10 @@ open class PolicyRequestHandler(
                 // REST call failed due to an server err -> temporary error (REST server might be overloaded)
                 writeTemporaryError(ch, id, "REST server had an internal error!")
             }
+        } catch (e: ContentConvertException) {
+            writeInvalidDataError(ch, id, response, e)
+        } catch (e: NoTransformationFoundException) {
+            writeInvalidDataError(ch, id, response, e)
         } catch (e: IOException) {
             logger.error(e) { "$id - Failed to write response!" }
             try {
@@ -134,9 +142,15 @@ open class PolicyRequestHandler(
         writeActionResponse(ch, id, "554 $id - $message")
     }
 
-    private suspend fun writeTemporaryError(ch: ByteWriteChannel, id: UUID, message: String?) {
+    private suspend fun writeTemporaryError(ch: ByteWriteChannel, id: UUID, message: String) {
         logger.warn { "$id - temporary error: $message" }
         writeActionResponse(ch, id, "451 $id - $message")
+    }
+
+    private suspend fun writeInvalidDataError(ch: ByteWriteChannel, id: UUID, response: HttpResponse, e: Exception) {
+        val bodyText = response.bodyAsText()
+        logger.error(e) { "$id - Received invalid data with Content-Type '${response.contentType()}': $bodyText" }
+        writeTemporaryError(ch, id, "REST connector received invalid data!")
     }
 
     private suspend fun writeActionResponse(ch: ByteWriteChannel, id: UUID, action: String) {
