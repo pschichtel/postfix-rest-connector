@@ -2,11 +2,7 @@ package tel.schich.postfixrestconnector
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.timeout
-import io.ktor.client.request.request
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.takeFrom
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -23,7 +19,6 @@ private val logger = KotlinLogging.logger {  }
 open class SocketmapLookupHandler(
     override val endpoint: Endpoint,
     private val http: HttpClient,
-    private val userAgent: String
 ) : PostfixRequestHandler {
 
     override fun createState(): ConnectionState {
@@ -44,21 +39,11 @@ open class SocketmapLookupHandler(
         val lookupKey = requestData.substring(spacePos + 1)
 
         val response = try {
-            http.request {
-                method = HttpMethod.Get
+            http.connectorEndpointRequest(endpoint, id, logger) {
                 url {
-                    takeFrom(endpoint.target)
                     parameters.append("name", name)
                     parameters.append("key", lookupKey)
                 }
-                logger.info { "$id - request to: $url" }
-                headers.append("User-Agent", userAgent)
-                headers.append("X-Auth-Token", endpoint.authToken)
-                headers.append("X-Request-Id", id.toString())
-                timeout {
-                    requestTimeoutMillis = endpoint.requestTimeout.toLong()
-                }
-                logRequest(id, logger)
             }
         } catch (e: CancellationException) {
             logger.error(e) { "$id - error occurred during request!" }
@@ -158,7 +143,7 @@ open class SocketmapLookupHandler(
             return bytesRead
         }
 
-        override fun close() {
+        override suspend fun close() {
             pendingRead = null
         }
     }

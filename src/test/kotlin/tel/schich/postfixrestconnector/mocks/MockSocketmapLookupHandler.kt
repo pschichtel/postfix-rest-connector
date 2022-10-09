@@ -6,7 +6,7 @@ import tel.schich.postfixrestconnector.SocketmapLookupHandler
 import tel.schich.postfixrestconnector.TestHttpClient
 import java.util.UUID
 
-class MockSocketmapLookupHandler(endpoint: Endpoint) : SocketmapLookupHandler(endpoint, TestHttpClient, "test") {
+class MockSocketmapLookupHandler(endpoint: Endpoint) : SocketmapLookupHandler(endpoint, TestHttpClient) {
     var data: String? = null
         private set
 

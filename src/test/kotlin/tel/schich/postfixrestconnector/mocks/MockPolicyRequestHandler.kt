@@ -8,7 +8,7 @@ import tel.schich.postfixrestconnector.PolicyRequestHandler
 import tel.schich.postfixrestconnector.TestHttpClient
 import java.util.UUID
 
-class MockPolicyRequestHandler(endpoint: Endpoint) : PolicyRequestHandler(endpoint, TestHttpClient, "test") {
+class MockPolicyRequestHandler(endpoint: Endpoint) : PolicyRequestHandler(endpoint, TestHttpClient) {
     private var data: Parameters? = null
     override suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, params: Parameters) {
         data = params

@@ -3,6 +3,7 @@ package tel.schich.postfixrestconnector
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.ServerSocket
@@ -54,6 +55,9 @@ class RestConnector {
             install(ContentNegotiation) {
                 json()
             }
+            install(UserAgent) {
+                agent = config.userAgent
+            }
         }
 
         val job = SupervisorJob()
@@ -67,9 +71,9 @@ class RestConnector {
             logger.info { "Bound endpoint ${endpoint.name} to address: ${listenSocket.localAddress}" }
 
             val handler = when (endpoint.mode) {
-                TcpLookupHandler.MODE_NAME -> TcpLookupHandler(endpoint, restClient, config.userAgent)
-                SocketmapLookupHandler.MODE_NAME -> SocketmapLookupHandler(endpoint, restClient, config.userAgent)
-                PolicyRequestHandler.MODE_NAME -> PolicyRequestHandler(endpoint, restClient, config.userAgent)
+                TcpLookupHandler.MODE_NAME -> TcpLookupHandler(endpoint, restClient)
+                SocketmapLookupHandler.MODE_NAME -> SocketmapLookupHandler(endpoint, restClient)
+                PolicyRequestHandler.MODE_NAME -> PolicyRequestHandler(endpoint, restClient)
                 else -> error("Unknown mode " + endpoint.mode + "!")
             }
 

@@ -4,14 +4,10 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.NoTransformationFoundException
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpRequestTimeoutException
-import io.ktor.client.plugins.timeout
-import io.ktor.client.request.request
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.http.takeFrom
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.CancellationException
@@ -29,7 +25,6 @@ private val logger = KotlinLogging.logger {  }
 class TcpLookupHandler(
     override val endpoint: Endpoint,
     private val http: HttpClient,
-    private val userAgent: String
 ) : PostfixRequestHandler {
     override fun createState() = TcpConnectionState()
 
@@ -43,20 +38,10 @@ class TcpLookupHandler(
         val lookupKey = decodeURLEncodedData(rawRequest.substring(LOOKUP_PREFIX.length).trim { it <= ' ' })
 
         val response = try {
-            http.request {
-                method = HttpMethod.Get
+            http.connectorEndpointRequest(endpoint, id, logger) {
                 url {
-                    takeFrom(endpoint.target)
                     parameters.append("key", lookupKey)
                 }
-                logger.info { "$id - request to: $url" }
-                headers.append("User-Agent", userAgent)
-                headers.append("X-Auth-Token", endpoint.authToken)
-                headers.append("X-Request-Id", id.toString())
-                timeout {
-                    requestTimeoutMillis = endpoint.requestTimeout.toLong()
-                }
-                logRequest(id, logger)
             }
         } catch (e: HttpRequestTimeoutException) {
             logger.error(e) { "$id - request timeout out!!" }
@@ -134,7 +119,7 @@ class TcpLookupHandler(
             return bytesRead
         }
 
-        override fun close() {
+        override suspend fun close() {
             pendingRead = null
         }
     }

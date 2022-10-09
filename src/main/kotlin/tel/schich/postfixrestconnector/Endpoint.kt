@@ -12,6 +12,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 const val DEFAULT_RESPONSE_VALUE_SEPARATOR = ","
+const val DEFAULT_REQUEST_TIMEOUT_MILLIS = 2000L
 
 object UrlSerializer : KSerializer<Url> {
     override val descriptor = PrimitiveSerialDescriptor("io.ktor.http.Url", PrimitiveKind.STRING)
@@ -26,7 +27,7 @@ data class Endpoint(@SerialName("name") val name: String,
                     @SerialName("bind-address") val bindAddress: String,
                     @SerialName("bind-port") val bindPort: Int,
                     @SerialName("auth-token") val authToken: String,
-                    @SerialName("request-timeout") val requestTimeout: Long,
+                    @SerialName("request-timeout") val requestTimeout: Long = DEFAULT_REQUEST_TIMEOUT_MILLIS,
                     @SerialName("mode") val mode: String,
                     @SerialName("list-separator") val listSeparator: String = DEFAULT_RESPONSE_VALUE_SEPARATOR,
 ) {

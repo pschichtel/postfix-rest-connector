@@ -1,9 +1,36 @@
 package tel.schich.postfixrestconnector
 
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.request
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.utils.EmptyContent
+import io.ktor.http.HttpMethod
+import io.ktor.http.takeFrom
 import mu.KLogger
 import java.util.UUID
+
+suspend fun HttpClient.connectorEndpointRequest(
+    endpoint: Endpoint,
+    id: UUID,
+    logger: KLogger,
+    builder: HttpRequestBuilder.() -> Unit,
+): HttpResponse {
+    return request {
+        method = HttpMethod.Get
+        url {
+            takeFrom(endpoint.target)
+        }
+        headers.append("X-Auth-Token", endpoint.authToken)
+        headers.append("X-Request-Id", id.toString())
+        timeout {
+            requestTimeoutMillis = endpoint.requestTimeout
+        }
+        builder()
+        logRequest(id, logger)
+    }
+}
 
 fun HttpRequestBuilder.logRequest(id: UUID, logger: KLogger) {
     val sb = StringBuilder()
@@ -22,7 +49,7 @@ fun HttpRequestBuilder.logRequest(id: UUID, logger: KLogger) {
     if (body !is EmptyContent) {
         sb.append("<body>")
     }
-    logger.info { "Request of $id:\n$sb" }
+    logger.info { "$id - connector endpoint request:\n$sb" }
 }
 
 fun encodeLookupResponse(values: Iterable<String>, separator: String): String {

@@ -1,9 +1,7 @@
 package tel.schich.postfixrestconnector
 
 import io.ktor.client.HttpClient
-import io.ktor.client.plugins.timeout
 import io.ktor.client.request.forms.FormDataContent
-import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
@@ -25,7 +23,6 @@ private val logger = KotlinLogging.logger {  }
 open class PolicyRequestHandler(
     override val endpoint: Endpoint,
     private val http: HttpClient,
-    private val userAgent: String
 ) : PostfixRequestHandler {
     override fun createState(): ConnectionState {
         return PolicyConnectionState()
@@ -35,17 +32,9 @@ open class PolicyRequestHandler(
         logger.info { "$id - Policy request on endpoint ${endpoint.name}: $params" }
 
         val response = try {
-            http.request(endpoint.target) {
+            http.connectorEndpointRequest(endpoint, id, logger) {
                 method = HttpMethod.Post
-                logger.info { "$id - request to: $url" }
-                headers.append("User-Agent", userAgent)
-                headers.append("X-Auth-Token", endpoint.authToken)
-                headers.append("X-Request-Id", id.toString())
                 setBody(FormDataContent(params))
-                timeout {
-                    requestTimeoutMillis = endpoint.requestTimeout.toLong()
-                }
-                logRequest(id, logger)
             }
         } catch (e: CancellationException) {
             logger.error(e) { "$id - error occurred during request!" }
@@ -69,15 +58,9 @@ open class PolicyRequestHandler(
             logger.info { "$id - received response: $statusCode" }
             if (statusCode == HttpStatusCode.OK) {
                 // REST call successful -> return data
-                val data = response.bodyAsText()
-                if (data != null) {
-                    val trimmed = data.trim { it <= ' ' }
-                    logger.info { "$id - Response: $trimmed" }
-                    writeActionResponse(ch, id, trimmed)
-                } else {
-                    logger.warn { "$id - No result!" }
-                    writeTemporaryError(ch, id, "REST result was broken!")
-                }
+                val data = response.bodyAsText().trim { it <= ' ' }
+                logger.info { "$id - Response: $data" }
+                writeActionResponse(ch, id, data)
             } else if (statusCode.value in 400..499) {
                 // REST call failed due to user error -> emit permanent error (connector is misconfigured)
                 writePermanentError(ch, id, "REST server signaled a user error, is the connector misconfigured?")
@@ -140,7 +123,7 @@ open class PolicyRequestHandler(
             return bytesRead
         }
 
-        override fun close() {
+        override suspend fun close() {
             pendingRead = null
             pendingRequest = null
         }
