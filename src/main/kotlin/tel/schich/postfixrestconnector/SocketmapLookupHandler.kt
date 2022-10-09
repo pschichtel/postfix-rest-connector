@@ -157,7 +157,7 @@ open class SocketmapLookupHandler(
                 val c = buffer.get().toInt()
                 when (state) {
                     STATE_READ_LENGTH -> when (c) {
-                        LENGTH_VALUE_SEPARATOR -> {
+                        LENGTH_VALUE_SEPARATOR_CHAR_CODE -> {
                             state = STATE_READ_VALUE
                         }
                         else -> {
@@ -177,7 +177,7 @@ open class SocketmapLookupHandler(
                         }
                     }
                     STATE_READ_END -> when (c) {
-                        END -> {
+                        END_CHAR_CODE -> {
                             state = STATE_READ_LENGTH
                             length = 0
                             handleRequest(ch, id, String(pendingRead.toByteArray(), UTF_8))
@@ -200,7 +200,7 @@ open class SocketmapLookupHandler(
 
         const val MODE_NAME = "socketmap-lookup"
         private const val MAXIMUM_RESPONSE_LENGTH = 10000
-        private const val END = ','.code
-        private const val LENGTH_VALUE_SEPARATOR = ':'.code
+        private const val END_CHAR_CODE = ','.code
+        private const val LENGTH_VALUE_SEPARATOR_CHAR_CODE = ':'.code
     }
 }

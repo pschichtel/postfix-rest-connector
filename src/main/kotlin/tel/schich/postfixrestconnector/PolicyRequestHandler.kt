@@ -103,7 +103,7 @@ open class PolicyRequestHandler(
     }
 
     private suspend fun writeActionResponse(ch: ByteWriteChannel, id: UUID, action: String) {
-        val text = "action=$action$LINE_END$LINE_END"
+        val text = "action=$action$LINE_END_CHAR$LINE_END_CHAR"
         val payload = Charsets.US_ASCII.encode(text)
         logger.info { "$id - Response: $text" }
         ch.writeFully(payload)
@@ -127,11 +127,11 @@ open class PolicyRequestHandler(
                 val c = buffer.get().toInt()
                 when (state) {
                     STATE_READ_NAME -> when (c) {
-                        LINE_END -> {
+                        LINE_END_CHAR_CODE -> {
                             handleRequest(ch, id, pendingRequest.build())
                             pendingRequest.clear()
                         }
-                        VALUE_SEPARATOR -> {
+                        VALUE_SEPARATOR_CHAR_CODE -> {
                             pendingPairName = pendingReadAsString()
                             state = STATE_READ_VALUE
                         }
@@ -141,7 +141,7 @@ open class PolicyRequestHandler(
                     }
 
                     STATE_READ_VALUE -> when (c) {
-                        LINE_END -> {
+                        LINE_END_CHAR_CODE -> {
                             pendingRequest.append(pendingPairName!!, pendingReadAsString())
                             state = STATE_READ_NAME
                         }
@@ -164,7 +164,8 @@ open class PolicyRequestHandler(
         private const val STATE_READ_VALUE = 2
 
         const val MODE_NAME = "policy"
-        private const val LINE_END = '\n'.code
-        private const val VALUE_SEPARATOR = '='.code
+        private const val LINE_END_CHAR = '\n'
+        private const val LINE_END_CHAR_CODE = LINE_END_CHAR.code
+        private const val VALUE_SEPARATOR_CHAR_CODE = '='.code
     }
 }
