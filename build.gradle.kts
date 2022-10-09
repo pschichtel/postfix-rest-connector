@@ -45,7 +45,7 @@ tasks.withType<KotlinCompile> {
 
 jib {
     from {
-        image = "eclipse-temurin:17-jre-alpine"
+        image = "eclipse-temurin:17-jre-alpine@sha256:e1506ba20f0cb2af6f23e24c7f8855b417f0b085708acd9b85344a884ba77767"
     }
     container {
         ports = listOf("8080")
