@@ -84,7 +84,7 @@ class RestConnector {
                     val socket = listenSocket.accept()
                     val actor = processConnection(endpoint, socket, handler)
                     actor.invokeOnCompletion { t ->
-                        if (t != null) {
+                        if (t != null && t !is CancellationException) {
                             logger.error(t) { "Client socket $socket closed due to error while processing!" }
                         }
                         socket.close()

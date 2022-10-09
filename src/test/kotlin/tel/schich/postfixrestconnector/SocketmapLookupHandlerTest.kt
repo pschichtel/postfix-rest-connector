@@ -23,12 +23,12 @@ class SocketmapLookupHandlerTest {
 
     @Test
     fun testRequest() = runBlocking {
-        val d = "test 0123456789"
-        val s = d.length.toString() + ":" + d + ","
-        val b = stringBuffer(s)
+        val data = "test 0123456789"
+        val encodedData = data.length.toString() + ":" + data + ","
+        val buf = stringBuffer(encodedData)
         val state = handler.createState()
-        state.read(ByteChannel(), b)
-        assertEquals(0, b.remaining())
-        assertEquals(d, handler.data)
+        state.read(ByteChannel(), buf)
+        assertEquals(0, buf.remaining())
+        assertEquals(data, handler.data)
     }
 }

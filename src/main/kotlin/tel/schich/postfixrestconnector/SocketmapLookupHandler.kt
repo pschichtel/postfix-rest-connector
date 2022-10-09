@@ -63,7 +63,7 @@ open class SocketmapLookupHandler(
         } catch (e: IOException) {
             logger.error(e) { "$id - error occurred during request!" }
             writeTempError(ch, id, e.message)
-            throw e
+            return
         }
 
         try {

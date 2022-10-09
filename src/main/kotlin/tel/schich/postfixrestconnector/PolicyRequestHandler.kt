@@ -48,13 +48,12 @@ open class PolicyRequestHandler(
             logger.error(e) { "$id - error occurred during request!" }
             withContext(NonCancellable) {
                 writeTemporaryError(ch, id, e.message ?: "unknown coroutine cancellation")
-                ch.close(e)
             }
             throw e
         } catch (e: IOException) {
             logger.error(e) { "$id - error occurred during request!" }
             writeTemporaryError(ch, id, e.message ?: "unknown IO error")
-            throw e
+            return
         }
 
         try {
