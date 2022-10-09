@@ -45,7 +45,7 @@ class TcpLookupHandler(
             }
         } catch (e: HttpRequestTimeoutException) {
             logger.error(e) { "$id - request timeout out!" }
-            writeError(ch, id, "REST request timed out: " + e.message)
+            writeError(ch, id, "REST request timed out")
             return
         } catch (e: CancellationException) {
             logger.error(e) { "$id - coroutine got cancelled!!" }

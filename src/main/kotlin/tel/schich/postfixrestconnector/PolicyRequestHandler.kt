@@ -42,7 +42,7 @@ open class PolicyRequestHandler(
             }
         } catch (e: HttpRequestTimeoutException) {
             logger.error(e) { "$id - request timeout out!" }
-            writeTemporaryError(ch, id, "REST request timed out: " + e.message)
+            writeTemporaryError(ch, id, "REST request timed out")
             return
         } catch (e: CancellationException) {
             logger.error(e) { "$id - error occurred during request!" }

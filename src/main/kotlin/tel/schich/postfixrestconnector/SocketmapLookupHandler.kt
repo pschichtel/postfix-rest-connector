@@ -52,7 +52,7 @@ open class SocketmapLookupHandler(
             }
         } catch (e: HttpRequestTimeoutException) {
             logger.error(e) { "$id - request timeout out!" }
-            writeTimeoutError(ch, id, "REST request timed out: ${e.message}")
+            writeTimeoutError(ch, id, "REST request timed out")
             return
         } catch (e: CancellationException) {
             logger.error(e) { "$id - error occurred during request!" }
