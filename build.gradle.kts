@@ -13,9 +13,9 @@ plugins {
 group = "tel.schich"
 version = "2.0.1-SNAPSHOT"
 
-val ktorVersion = "2.1.2"
-val coroutinesVersion = "1.6.4"
-val serializationVersion = "1.4.0"
+val ktorVersion = "2.3.1"
+val coroutinesVersion = "1.7.1"
+val serializationVersion = "1.5.1"
 
 repositories {
     mavenCentral()
@@ -29,8 +29,8 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
-    implementation("io.github.microutils:kotlin-logging:3.0.0")
-    implementation("ch.qos.logback:logback-classic:1.4.3")
+    implementation("io.github.microutils:kotlin-logging:3.0.5")
+    implementation("ch.qos.logback:logback-classic:1.4.7")
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
 }
@@ -65,5 +65,5 @@ jib {
 
 detekt {
     parallel = true
-    config = files(project.rootDir.resolve("detekt.yml"))
+    config.setFrom(files(project.rootDir.resolve("detekt.yml")))
 }
