@@ -114,7 +114,7 @@ class RestConnector {
 
         val buffer: ByteBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE)
         val readChannel = socket.openReadChannel()
-        val writeChannel = socket.openWriteChannel()
+        val writeChannel = socket.openWriteChannel(autoFlush = false)
         val state = handler.createState()
 
         return coroutineScope {
@@ -128,6 +128,7 @@ class RestConnector {
                         }
                         buffer.flip()
                         state.read(writeChannel, buffer)
+                        writeChannel.flush()
                     }
                 } catch (e: CancellationException) {
                     throw e
