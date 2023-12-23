@@ -14,3 +14,7 @@ pluginManagement {
         id("io.gitlab.arturbosch.detekt") version(detektVersion)
     }
 }
+
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.7.0"
+}

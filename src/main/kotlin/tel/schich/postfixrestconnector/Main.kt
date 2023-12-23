@@ -2,7 +2,6 @@ package tel.schich.postfixrestconnector
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Paths
