@@ -26,4 +26,6 @@ jobs:
       - name: Build
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: jib
+          arguments: jibDockerBuild
+      - name: push
+        run: docker push -a ghcr.io/pschichtel/postfix-rest-connector
