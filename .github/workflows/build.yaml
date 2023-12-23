@@ -26,4 +26,4 @@ jobs:
       - name: Build
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: jib
+          arguments: jib --console=plain
