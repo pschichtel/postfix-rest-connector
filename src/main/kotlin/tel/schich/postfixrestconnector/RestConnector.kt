@@ -80,7 +80,7 @@ class RestConnector {
                 TcpLookupHandler.MODE_NAME -> TcpLookupHandler(endpoint, restClient)
                 SocketmapLookupHandler.MODE_NAME -> SocketmapLookupHandler(endpoint, restClient)
                 PolicyRequestHandler.MODE_NAME -> PolicyRequestHandler(endpoint, restClient)
-                else -> error("Unknown mode " + endpoint.mode + "!")
+                else -> error("Unknown mode ${endpoint.mode}!")
             }
 
             val accepter = scope.launch(SupervisorJob()) {
@@ -109,32 +109,34 @@ class RestConnector {
         return Session(job, selector, sockets)
     }
 
-    private suspend fun processConnection(endpoint: Endpoint, socket: Socket, handler: PostfixRequestHandler): Job {
+    private fun CoroutineScope.processConnection(
+        endpoint: Endpoint,
+        socket: Socket,
+        handler: PostfixRequestHandler
+    ): Job {
         logger.info { "Client ${socket.remoteAddress} connected to ${socket.localAddress} (endpoint: ${endpoint.name})" }
 
-        val buffer: ByteBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE)
-        val readChannel = socket.openReadChannel()
-        val writeChannel = socket.openWriteChannel(autoFlush = false)
-        val state = handler.createState()
+        return launch {
+            val buffer: ByteBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE)
+            val readChannel = socket.openReadChannel()
+            val writeChannel = socket.openWriteChannel(autoFlush = false)
+            val state = handler.createState()
 
-        return coroutineScope {
-            launch {
-                try {
-                    while (isActive) {
-                        buffer.clear()
-                        if (readChannel.readAvailable(buffer) == -1) {
-                            cancel()
-                            break
-                        }
-                        buffer.flip()
-                        state.read(writeChannel, buffer)
-                        writeChannel.flush()
+            try {
+                while (isActive) {
+                    buffer.clear()
+                    if (readChannel.readAvailable(buffer) == -1) {
+                        cancel()
+                        break
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.error(e) { "Connection actor failed!" }
+                    buffer.flip()
+                    state.read(writeChannel, buffer)
+                    writeChannel.flush()
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.error(e) { "Connection actor failed!" }
             }
         }
     }
