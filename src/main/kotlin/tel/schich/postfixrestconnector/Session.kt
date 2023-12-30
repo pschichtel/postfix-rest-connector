@@ -15,6 +15,7 @@ import io.ktor.network.sockets.openWriteChannel
 import io.ktor.network.sockets.tcpNoDelay
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,8 +48,8 @@ class Session(
         selector.close()
     }
 }
-suspend fun startSession(config: Configuration): Session {
-    val selector = SelectorManager(Dispatchers.IO)
+suspend fun startSession(config: Configuration, dispatcher: CoroutineDispatcher = Dispatchers.IO): Session {
+    val selector = SelectorManager(dispatcher)
     val restClient = HttpClient(Java) {
         engine {
             protocolVersion = HTTP_2
@@ -63,7 +64,7 @@ suspend fun startSession(config: Configuration): Session {
     }
 
     val job = SupervisorJob()
-    val scope = CoroutineScope(job)
+    val scope = CoroutineScope(job + dispatcher)
     val sockets = config.endpoints.map { endpoint ->
         val listenSocket = aSocket(selector)
             .tcp()
