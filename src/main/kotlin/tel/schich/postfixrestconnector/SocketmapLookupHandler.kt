@@ -138,7 +138,7 @@ open class SocketmapLookupHandler(
 
     private suspend fun writeResponse(ch: ByteWriteChannel, id: UUID, data: String) {
         if (data.length > MAXIMUM_RESPONSE_LENGTH) {
-            throw IOException("$id - response to long")
+            error("$id - response to long")
         }
         val text = compileOne(data)
         logger.info { "$id - Response: $text" }
