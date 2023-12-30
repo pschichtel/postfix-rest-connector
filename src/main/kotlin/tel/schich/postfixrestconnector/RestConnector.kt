@@ -121,21 +121,15 @@ class RestConnector {
             val writeChannel = socket.openWriteChannel(autoFlush = false)
             val state = handler.createState()
 
-            try {
-                while (isActive) {
-                    buffer.clear()
-                    if (readChannel.readAvailable(buffer) == -1) {
-                        cancel()
-                        break
-                    }
-                    buffer.flip()
-                    state.read(writeChannel, buffer)
-                    writeChannel.flush()
+            while (isActive) {
+                buffer.clear()
+                if (readChannel.readAvailable(buffer) == -1) {
+                    cancel()
+                    break
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.error(e) { "Connection actor failed!" }
+                buffer.flip()
+                state.read(writeChannel, buffer)
+                writeChannel.flush()
             }
         }
     }
