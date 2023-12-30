@@ -55,7 +55,7 @@ open class SocketmapLookupHandler(
             writeTimeoutError(ch, id, "REST request timed out")
             return
         } catch (e: CancellationException) {
-            logger.error(e) { "$id - error occurred during request!" }
+            logger.error(e) { "$id - connection coroutine got cancelled!" }
             withContext(NonCancellable) {
                 writeTempError(ch, id, e.message)
             }
@@ -115,7 +115,7 @@ open class SocketmapLookupHandler(
     private suspend fun writeBrokenRequestErrorAndClose(ch: ByteWriteChannel, id: UUID, reason: String) {
         logger.error { "$id - broken request: $reason" }
         writePermError(ch, id, "Broken request! ($reason)")
-        ch.close(cause = null)
+        error(reason)
     }
 
     private suspend fun writeTimeoutError(ch: ByteWriteChannel, id: UUID, message: String) {
@@ -144,11 +144,10 @@ open class SocketmapLookupHandler(
         logger.info { "$id - Response: $text" }
         val payload = Charsets.US_ASCII.encode(text)
         ch.writeFully(payload)
-        ch.flush()
     }
 
     private inner class SocketMapConnectionState : ConnectionState() {
-        private var state = STATE_READ_LENGTH
+        private var state = ReadState.LENGTH
         private var length = 0L
         private val pendingRead = ByteArrayOutputStream()
 
@@ -156,9 +155,9 @@ open class SocketmapLookupHandler(
             while (buffer.remaining() > 0) {
                 val c = buffer.get().toInt()
                 when (state) {
-                    STATE_READ_LENGTH -> when (c) {
+                    ReadState.LENGTH -> when (c) {
                         LENGTH_VALUE_SEPARATOR_CHAR_CODE -> {
-                            state = STATE_READ_VALUE
+                            state = ReadState.VALUE
                         }
                         else -> {
                             val digit = c - '0'.code
@@ -168,17 +167,17 @@ open class SocketmapLookupHandler(
                             length = length * 10 + digit
                         }
                     }
-                    STATE_READ_VALUE -> {
+                    ReadState.VALUE -> {
                         if (pendingRead.size() < length) {
                             pendingRead.write(c)
                         }
                         if (pendingRead.size() >= length) {
-                            state = STATE_READ_END
+                            state = ReadState.END
                         }
                     }
-                    STATE_READ_END -> when (c) {
+                    ReadState.END -> when (c) {
                         END_CHAR_CODE -> {
-                            state = STATE_READ_LENGTH
+                            state = ReadState.LENGTH
                             length = 0
                             handleRequest(ch, id, String(pendingRead.toByteArray(), UTF_8))
                             pendingRead.reset()
@@ -187,20 +186,21 @@ open class SocketmapLookupHandler(
                             writeBrokenRequestErrorAndClose(ch, id, "Expected comma, but got: ${c.toChar()} (code: $c)")
                         }
                     }
-                    else -> writeBrokenRequestErrorAndClose(ch, id, "Reached state $state, but I don't know what to do...")
                 }
             }
         }
     }
 
     companion object {
-        private const val STATE_READ_LENGTH = 1
-        private const val STATE_READ_VALUE = 2
-        private const val STATE_READ_END = 3
-
         const val MODE_NAME = "socketmap-lookup"
         private const val MAXIMUM_RESPONSE_LENGTH = 10000
         private const val END_CHAR_CODE = ','.code
         private const val LENGTH_VALUE_SEPARATOR_CHAR_CODE = ':'.code
+    }
+
+    private enum class ReadState {
+        LENGTH,
+        VALUE,
+        END,
     }
 }

@@ -32,8 +32,7 @@ class TcpLookupHandler(
         logger.info { "$id - tcp-lookup request on endpoint ${endpoint.name}: $rawRequest" }
         if (rawRequest.length <= TcpLookup.LOOKUP_PREFIX.length || !rawRequest.startsWith(TcpLookup.LOOKUP_PREFIX)) {
             writeError(ch, id, "Broken request!")
-            ch.close(cause = null)
-            return
+            error("The entire tcp lookup request is shorter than the prefix length!")
         }
         val lookupKey = TcpLookup.decodeRequest(rawRequest.substring(TcpLookup.LOOKUP_PREFIX.length).trim { it <= ' ' })
 
@@ -48,7 +47,7 @@ class TcpLookupHandler(
             writeError(ch, id, "REST request timed out")
             return
         } catch (e: CancellationException) {
-            logger.error(e) { "$id - coroutine got cancelled!!" }
+            logger.error(e) { "$id - connection coroutine got cancelled!" }
             withContext(NonCancellable) {
                 writeError(ch, id, "Coroutine cancelled: " + e.message)
             }
@@ -127,7 +126,6 @@ class TcpLookupHandler(
         }
         logger.info { "$id - Response: $text" }
         ch.writeFully(payload)
-        ch.flush()
     }
 
     private inner class TcpConnectionState : ConnectionState() {

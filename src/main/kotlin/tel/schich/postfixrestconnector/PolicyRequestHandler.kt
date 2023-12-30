@@ -45,7 +45,7 @@ open class PolicyRequestHandler(
             writeTemporaryError(ch, id, "REST request timed out")
             return
         } catch (e: CancellationException) {
-            logger.error(e) { "$id - error occurred during request!" }
+            logger.error(e) { "$id - connection coroutine got cancelled!" }
             withContext(NonCancellable) {
                 writeTemporaryError(ch, id, e.message ?: "unknown coroutine cancellation")
             }
@@ -107,11 +107,10 @@ open class PolicyRequestHandler(
         val payload = Charsets.US_ASCII.encode(text)
         logger.info { "$id - Response: $text" }
         ch.writeFully(payload)
-        ch.flush()
     }
 
     private inner class PolicyConnectionState : ConnectionState() {
-        private var state = STATE_READ_NAME
+        private var state = ReadState.NAME
         private var pendingPairName: String? = null
         private val pendingRead = ByteArrayOutputStream()
         private val pendingRequest = ParametersBuilder()
@@ -126,33 +125,28 @@ open class PolicyRequestHandler(
             while (buffer.remaining() > 0) {
                 val c = buffer.get().toInt()
                 when (state) {
-                    STATE_READ_NAME -> when (c) {
+                    ReadState.NAME -> when (c) {
                         LINE_END_CHAR_CODE -> {
                             handleRequest(ch, id, pendingRequest.build())
                             pendingRequest.clear()
                         }
                         VALUE_SEPARATOR_CHAR_CODE -> {
                             pendingPairName = pendingReadAsString()
-                            state = STATE_READ_VALUE
+                            state = ReadState.VALUE
                         }
                         else -> {
                             pendingRead.write(c)
                         }
                     }
 
-                    STATE_READ_VALUE -> when (c) {
+                    ReadState.VALUE -> when (c) {
                         LINE_END_CHAR_CODE -> {
                             pendingRequest.append(pendingPairName!!, pendingReadAsString())
-                            state = STATE_READ_NAME
+                            state = ReadState.NAME
                         }
                         else -> {
                             pendingRead.write(c)
                         }
-                    }
-
-                    else -> {
-                        writePermanentError(ch, id, "Reached state $state, but I don't know what to do...")
-                        ch.close(cause = null)
                     }
                 }
             }
@@ -160,12 +154,14 @@ open class PolicyRequestHandler(
     }
 
     companion object {
-        private const val STATE_READ_NAME = 1
-        private const val STATE_READ_VALUE = 2
-
         const val MODE_NAME = "policy"
         private const val LINE_END_CHAR = '\n'
         private const val LINE_END_CHAR_CODE = LINE_END_CHAR.code
         private const val VALUE_SEPARATOR_CHAR_CODE = '='.code
+    }
+
+    private enum class ReadState {
+        NAME,
+        VALUE,
     }
 }

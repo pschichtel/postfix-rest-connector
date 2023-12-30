@@ -126,8 +126,11 @@ private fun CoroutineScope.processConnection(
                 break
             }
             buffer.flip()
-            state.read(writeChannel, buffer)
-            writeChannel.flush()
+            try {
+                state.read(writeChannel, buffer)
+            } finally {
+                writeChannel.flush()
+            }
         }
     }
 }
