@@ -47,90 +47,86 @@ class Session(
         selector.close()
     }
 }
-
-class RestConnector {
-
-    suspend fun start(config: Configuration): Session {
-        val selector = SelectorManager(Dispatchers.IO)
-        val restClient = HttpClient(Java) {
-            engine {
-                protocolVersion = HTTP_2
-            }
-            install(HttpTimeout)
-            install(ContentNegotiation) {
-                json()
-            }
-            install(UserAgent) {
-                agent = config.userAgent
-            }
+suspend fun startSession(config: Configuration): Session {
+    val selector = SelectorManager(Dispatchers.IO)
+    val restClient = HttpClient(Java) {
+        engine {
+            protocolVersion = HTTP_2
         }
-
-        val job = SupervisorJob()
-        val scope = CoroutineScope(job)
-        val sockets = config.endpoints.map { endpoint ->
-            val listenSocket = aSocket(selector)
-                .tcp()
-                .tcpNoDelay()
-                .bind(InetSocketAddress(endpoint.bindAddress, endpoint.bindPort))
-
-            logger.info { "Bound endpoint ${endpoint.name} to address: ${listenSocket.localAddress}" }
-
-            val handler = when (endpoint.mode) {
-                TcpLookupHandler.MODE_NAME -> TcpLookupHandler(endpoint, restClient)
-                SocketmapLookupHandler.MODE_NAME -> SocketmapLookupHandler(endpoint, restClient)
-                PolicyRequestHandler.MODE_NAME -> PolicyRequestHandler(endpoint, restClient)
-                else -> error("Unknown mode ${endpoint.mode}!")
-            }
-
-            val accepter = scope.launch(SupervisorJob()) {
-                while (isActive) {
-                    val socket = listenSocket.accept()
-                    val actor = processConnection(endpoint, socket, handler)
-                    actor.invokeOnCompletion { t ->
-                        if (t != null && t !is CancellationException) {
-                            logger.error(t) { "Client socket $socket closed due to error while processing!" }
-                        }
-                        socket.close()
-                    }
-                }
-            }
-
-            accepter.invokeOnCompletion { t ->
-                if (t != null) {
-                    logger.error(t) { "Listen socket $listenSocket closed due to error while accepting!" }
-                }
-                listenSocket.close()
-            }
-
-            listenSocket
+        install(HttpTimeout)
+        install(ContentNegotiation) {
+            json()
         }
-
-        return Session(job, selector, sockets)
+        install(UserAgent) {
+            agent = config.userAgent
+        }
     }
 
-    private fun CoroutineScope.processConnection(
-        endpoint: Endpoint,
-        socket: Socket,
-        handler: PostfixRequestHandler
-    ): Job {
-        logger.info { "Client ${socket.remoteAddress} connected to ${socket.localAddress} (endpoint: ${endpoint.name})" }
+    val job = SupervisorJob()
+    val scope = CoroutineScope(job)
+    val sockets = config.endpoints.map { endpoint ->
+        val listenSocket = aSocket(selector)
+            .tcp()
+            .tcpNoDelay()
+            .bind(InetSocketAddress(endpoint.bindAddress, endpoint.bindPort))
 
-        return launch {
-            val buffer: ByteBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE)
-            val readChannel = socket.openReadChannel()
-            val writeChannel = socket.openWriteChannel(autoFlush = false)
-            val state = handler.createState()
+        logger.info { "Bound endpoint ${endpoint.name} to address: ${listenSocket.localAddress}" }
 
+        val handler = when (endpoint.mode) {
+            TcpLookupHandler.MODE_NAME -> TcpLookupHandler(endpoint, restClient)
+            SocketmapLookupHandler.MODE_NAME -> SocketmapLookupHandler(endpoint, restClient)
+            PolicyRequestHandler.MODE_NAME -> PolicyRequestHandler(endpoint, restClient)
+            else -> error("Unknown mode ${endpoint.mode}!")
+        }
+
+        val accepter = scope.launch(SupervisorJob()) {
             while (isActive) {
-                buffer.clear()
-                if (readChannel.readAvailable(buffer) == -1) {
-                    cancel()
-                    break
+                val socket = listenSocket.accept()
+                val actor = processConnection(endpoint, socket, handler)
+                actor.invokeOnCompletion { t ->
+                    if (t != null && t !is CancellationException) {
+                        logger.error(t) { "Client socket $socket closed due to error while processing!" }
+                    }
+                    socket.close()
                 }
-                buffer.flip()
-                state.read(writeChannel, buffer)
-                writeChannel.flush()
             }
+        }
+
+        accepter.invokeOnCompletion { t ->
+            if (t != null) {
+                logger.error(t) { "Listen socket $listenSocket closed due to error while accepting!" }
+            }
+            listenSocket.close()
+        }
+
+        listenSocket
+    }
+
+    return Session(job, selector, sockets)
+}
+
+private fun CoroutineScope.processConnection(
+    endpoint: Endpoint,
+    socket: Socket,
+    handler: PostfixRequestHandler
+): Job {
+    logger.info { "Client ${socket.remoteAddress} connected to ${socket.localAddress} (endpoint: ${endpoint.name})" }
+
+    return launch {
+        val buffer: ByteBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE)
+        val readChannel = socket.openReadChannel()
+        val writeChannel = socket.openWriteChannel(autoFlush = false)
+        val state = handler.createState()
+
+        while (isActive) {
+            buffer.clear()
+            if (readChannel.readAvailable(buffer) == -1) {
+                cancel()
+                break
+            }
+            buffer.flip()
+            state.read(writeChannel, buffer)
+            writeChannel.flush()
         }
     }
 }

@@ -19,8 +19,7 @@ suspend fun main(args: Array<String>) {
         Files.readString(configPath)
     }
     val config = Json.decodeFromString<Configuration>(configContent)
-    val connector = RestConnector()
-    val session = connector.start(config)
+    val session = startSession(config)
 
     Runtime.getRuntime().addShutdownHook(Thread { session.close() })
 
