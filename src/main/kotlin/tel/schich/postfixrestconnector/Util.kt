@@ -1,5 +1,6 @@
 package tel.schich.postfixrestconnector
 
+import io.github.oshai.kotlinlogging.KLogger
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
@@ -8,7 +9,6 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.utils.EmptyContent
 import io.ktor.http.HttpMethod
 import io.ktor.http.takeFrom
-import mu.KLogger
 import java.io.IOException
 import java.net.ConnectException
 import java.util.UUID

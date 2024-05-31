@@ -1,5 +1,6 @@
 package tel.schich.postfixrestconnector
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.call.NoTransformationFoundException
 import io.ktor.client.plugins.HttpRequestTimeoutException
@@ -17,7 +18,6 @@ import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
-import mu.KotlinLogging
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer

@@ -1,5 +1,6 @@
 package tel.schich.postfixrestconnector
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.java.Java
 import io.ktor.client.plugins.HttpTimeout
@@ -24,7 +25,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
-import mu.KotlinLogging
 import java.net.http.HttpClient.Version.HTTP_2
 
 private val logger = KotlinLogging.logger {  }
