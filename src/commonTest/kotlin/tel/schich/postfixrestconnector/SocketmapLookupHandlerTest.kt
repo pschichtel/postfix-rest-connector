@@ -3,10 +3,12 @@ package tel.schich.postfixrestconnector
 import io.ktor.client.plugins.HttpTimeoutConfig.Companion.INFINITE_TIMEOUT_MS
 import io.ktor.http.Url
 import io.ktor.utils.io.ByteChannel
+import io.ktor.utils.io.core.remaining
 import kotlinx.coroutines.runBlocking
 import tel.schich.postfixrestconnector.mocks.MockSocketmapLookupHandler
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class SocketmapLookupHandlerTest {
     private val endpoint = Endpoint(
@@ -28,7 +30,7 @@ class SocketmapLookupHandlerTest {
         val buf = stringBuffer(encodedData)
         val state = handler.createState()
         state.read(ByteChannel(), buf)
-        assertEquals(0, buf.remaining())
+        assertTrue(buf.exhausted())
         assertEquals(data, handler.data)
     }
 }

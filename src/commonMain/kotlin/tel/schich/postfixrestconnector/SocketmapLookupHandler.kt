@@ -11,15 +11,15 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.ByteWriteChannel
-import io.ktor.utils.io.writeFully
+import io.ktor.utils.io.charsets.Charsets
+import io.ktor.utils.io.core.writeText
+import io.ktor.utils.io.writeSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.io.Buffer
 import kotlinx.io.IOException
 import kotlinx.io.Source
-import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.indices
 import kotlinx.io.readString
 import tel.schich.postfixrestconnector.Netstring.compileOne
 import kotlin.uuid.ExperimentalUuidApi
@@ -147,8 +147,9 @@ open class SocketmapLookupHandler(
         }
         val text = compileOne(data)
         logger.info { "$id - Response: $text" }
-        val payload = Charsets.US_ASCII.encode(text)
-        ch.writeFully(payload)
+        val payload = Buffer()
+        payload.writeText(text, charset = Charsets.ISO_8859_1)
+        ch.writeSource(payload)
     }
 
     private inner class SocketMapConnectionState : ConnectionState() {

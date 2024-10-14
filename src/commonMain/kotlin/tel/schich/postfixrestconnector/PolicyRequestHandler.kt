@@ -15,15 +15,15 @@ import io.ktor.http.ParametersBuilder
 import io.ktor.http.contentType
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.ByteWriteChannel
-import io.ktor.utils.io.writeFully
+import io.ktor.utils.io.charsets.Charsets
+import io.ktor.utils.io.core.writeText
+import io.ktor.utils.io.writeSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.io.Buffer
 import kotlinx.io.IOException
 import kotlinx.io.Source
-import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.indices
 import kotlinx.io.readString
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -109,9 +109,10 @@ open class PolicyRequestHandler(
 
     private suspend fun writeActionResponse(ch: ByteWriteChannel, id: Uuid, action: String) {
         val text = "action=$action$LINE_END_CHAR$LINE_END_CHAR"
-        val payload = Charsets.US_ASCII.encode(text)
+        val payload = Buffer()
+        payload.writeText(text, charset = Charsets.ISO_8859_1)
         logger.info { "$id - Response: $text" }
-        ch.writeFully(payload)
+        ch.writeSource(payload)
     }
 
     private inner class PolicyConnectionState : ConnectionState() {

@@ -8,7 +8,7 @@ pluginManagement {
     val detektVersion: String by settings
 
     plugins {
-        kotlin("jvm") version(kotlinVersion)
+        kotlin("multiplatform") version(kotlinVersion)
         kotlin("plugin.serialization") version(kotlinVersion)
         id("com.google.cloud.tools.jib") version(jibVersion)
         id("io.gitlab.arturbosch.detekt") version(detektVersion)

@@ -12,7 +12,11 @@ import io.ktor.http.contentType
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.CancellationException
+import io.ktor.utils.io.charsets.Charsets
+import io.ktor.utils.io.core.writeText
 import io.ktor.utils.io.writeFully
+import io.ktor.utils.io.writeSource
+import io.ktor.utils.io.writeString
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.io.Buffer
@@ -125,12 +129,13 @@ class TcpLookupHandler(
 
     private suspend fun writeResponse(ch: ByteWriteChannel, id: Uuid, code: Int, data: String) {
         val text = code.toString() + ' ' + TcpLookup.encodeResponse(data) + TcpLookup.END_CHAR
-        val payload = Charsets.US_ASCII.encode(text)
-        if (payload.remaining() > TcpLookup.MAXIMUM_RESPONSE_LENGTH) {
+        val payload = Buffer()
+        payload.writeText(text, charset =  Charsets.ISO_8859_1)
+        if (payload.size > TcpLookup.MAXIMUM_RESPONSE_LENGTH) {
             throw IOException("$id - response to long")
         }
         logger.info { "$id - Response: $text" }
-        ch.writeFully(payload)
+        ch.writeSource(payload)
     }
 
     private inner class TcpConnectionState : ConnectionState() {

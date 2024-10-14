@@ -2,10 +2,6 @@ package tel.schich.postfixrestconnector
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.java.Java
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.ServerSocket
@@ -13,24 +9,22 @@ import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.utils.io.readAvailable
-import io.ktor.utils.io.readByte
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.io.Buffer
-import java.net.http.HttpClient.Version.HTTP_2
 
 private val logger = KotlinLogging.logger {  }
 
 private const val READ_BUFFER_SIZE = 2048
+
+expect fun setupHttpClient(config: Configuration): HttpClient
 
 class Session(
     private val job: Job,
@@ -51,18 +45,7 @@ class Session(
 }
 suspend fun startSession(config: Configuration, dispatcher: CoroutineDispatcher = Dispatchers.IO): Session {
     val selector = SelectorManager(dispatcher)
-    val restClient = HttpClient(Java) {
-        engine {
-            protocolVersion = HTTP_2
-        }
-        install(HttpTimeout)
-        install(ContentNegotiation) {
-            json()
-        }
-        install(UserAgent) {
-            agent = config.userAgent
-        }
-    }
+    val restClient = setupHttpClient(config)
 
     val job = SupervisorJob()
     val scope = CoroutineScope(job + dispatcher)

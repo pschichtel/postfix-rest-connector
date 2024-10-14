@@ -2,12 +2,16 @@ package tel.schich.postfixrestconnector
 
 import io.ktor.http.Url
 import io.ktor.utils.io.ByteChannel
+import io.ktor.utils.io.core.remaining
 import kotlinx.coroutines.runBlocking
 import tel.schich.postfixrestconnector.mocks.MockPolicyRequestHandler
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class PolicyRequestHandlerTest {
     private val endpoint = Endpoint(
@@ -28,10 +32,10 @@ class PolicyRequestHandlerTest {
         val buf = stringBuffer(firstLine)
         val state = handler.createState()
         state.read(ByteChannel(), buf)
-        assertEquals(0, buf.remaining())
+        assertTrue(buf.exhausted())
         val data = handler.getDataAsPairs()
         assertNotNull(data)
-        assertEquals(1, data.size)
+        assertFalse(buf.exhausted())
         assertEquals(data[0], Pair("a", "b"))
     }
 
@@ -41,7 +45,7 @@ class PolicyRequestHandlerTest {
         val buf = stringBuffer(firstLine)
         val state = handler.createState()
         state.read(ByteChannel(), buf)
-        assertEquals(0, buf.remaining())
+        assertTrue(buf.exhausted())
         val data = handler.getDataAsPairs()
         assertNotNull(data)
         assertEquals(1, data.size)
@@ -55,12 +59,12 @@ class PolicyRequestHandlerTest {
         val state = handler.createState()
         var buf = stringBuffer(firstLine)
         state.read(ByteChannel(), buf)
-        assertEquals(0, buf.remaining())
+        assertTrue(buf.exhausted())
         var data = handler.getDataAsPairs()
         assertNull(data)
         buf = stringBuffer(secondLine)
         state.read(ByteChannel(), buf)
-        assertEquals(0, buf.remaining())
+        assertTrue(buf.exhausted())
         data = handler.getDataAsPairs()
         assertEquals(listOf(Pair("a", "b")), data)
     }
@@ -73,15 +77,15 @@ class PolicyRequestHandlerTest {
         val state = handler.createState()
         var buf = stringBuffer(firstLine)
         state.read(ByteChannel(), buf)
-        assertEquals(0, buf.remaining())
+        assertTrue(buf.exhausted())
         assertNull(handler.getData())
         buf = stringBuffer(secondLine)
         state.read(ByteChannel(), buf)
-        assertEquals(0, buf.remaining())
+        assertTrue(buf.exhausted())
         assertEquals(listOf(Pair("a", "b")), handler.getDataAsPairs())
         buf = stringBuffer(rest)
         state.read(ByteChannel(), buf)
-        assertEquals(0, buf.remaining())
+        assertTrue(buf.exhausted())
         assertEquals(listOf(Pair("a", "c")), handler.getDataAsPairs())
     }
 }

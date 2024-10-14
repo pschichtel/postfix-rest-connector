@@ -2,6 +2,7 @@ package tel.schich.postfixrestconnector
 
 import io.github.oshai.kotlinlogging.KLogger
 import io.ktor.client.HttpClient
+import io.ktor.client.network.sockets.ConnectTimeoutException
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.request
@@ -10,7 +11,6 @@ import io.ktor.client.utils.EmptyContent
 import io.ktor.http.HttpMethod
 import io.ktor.http.takeFrom
 import kotlinx.io.IOException
-import java.net.ConnectException
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -70,6 +70,6 @@ fun encodeLookupResponse(values: Iterable<String>, separator: String): String {
 }
 
 fun ioExceptionMessage(e: IOException): String = e.message ?: when (e) {
-    is ConnectException -> "Failed to connect"
+    is ConnectTimeoutException -> "Failed to connect (timeout)"
     else -> "unknown IO error"
 }

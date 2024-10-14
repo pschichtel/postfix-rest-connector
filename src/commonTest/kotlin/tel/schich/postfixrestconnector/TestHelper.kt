@@ -13,7 +13,9 @@ import io.ktor.http.HttpProtocolVersion
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.date.GMTDate
-import java.nio.ByteBuffer
+import io.ktor.utils.io.charsets.Charsets
+import io.ktor.utils.io.core.writeText
+import kotlinx.io.Buffer
 
 val TestHttpClient = HttpClient(MockEngine) {
     engine {
@@ -41,6 +43,8 @@ val TestHttpClient = HttpClient(MockEngine) {
     }
 }
 
-fun stringBuffer(s: String): ByteBuffer {
-    return Charsets.US_ASCII.encode(s)
+fun stringBuffer(s: String): Buffer {
+    val buffer = Buffer()
+    buffer.writeText(s, charset = Charsets.ISO_8859_1)
+    return buffer
 }
