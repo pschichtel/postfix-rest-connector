@@ -9,7 +9,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.utils.EmptyContent
 import io.ktor.http.HttpMethod
 import io.ktor.http.takeFrom
-import java.io.IOException
+import kotlinx.io.IOException
 import java.net.ConnectException
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid

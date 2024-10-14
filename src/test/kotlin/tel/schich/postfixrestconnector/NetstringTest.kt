@@ -1,10 +1,10 @@
 package tel.schich.postfixrestconnector
 
+import kotlinx.io.IOException
 import tel.schich.postfixrestconnector.Netstring.compile
 import tel.schich.postfixrestconnector.Netstring.compileOne
 import tel.schich.postfixrestconnector.Netstring.parse
 import tel.schich.postfixrestconnector.Netstring.parseOne
-import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

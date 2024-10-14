@@ -8,7 +8,7 @@ object TcpLookup {
     const val LOOKUP_PREFIX = "get "
     const val MAXIMUM_RESPONSE_LENGTH = 4096
     const val END_CHAR = '\n'
-    const val END_CHAR_CODE = '\n'.code
+    const val END_CHAR_CODE = '\n'.code.toByte()
 
     private const val PLUS_CHAR = "+"
     private const val PLUS_URL_ENCODED = "%2B"

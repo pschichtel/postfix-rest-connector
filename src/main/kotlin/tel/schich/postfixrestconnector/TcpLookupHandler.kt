@@ -15,10 +15,12 @@ import io.ktor.utils.io.CancellationException
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.nio.ByteBuffer
-import kotlin.text.Charsets.UTF_8
+import kotlinx.io.Buffer
+import kotlinx.io.IOException
+import kotlinx.io.Source
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.indices
+import kotlinx.io.readString
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -132,17 +134,17 @@ class TcpLookupHandler(
     }
 
     private inner class TcpConnectionState : ConnectionState() {
-        private val pendingRead = ByteArrayOutputStream()
+        private val pendingRead = Buffer()
 
-        override suspend fun read(ch: ByteWriteChannel, buffer: ByteBuffer) {
-            while (buffer.remaining() > 0) {
-                when (val c = buffer.get().toInt()) {
+        override suspend fun read(ch: ByteWriteChannel, buffer: Source) {
+            while (!buffer.exhausted()) {
+                when (val c = buffer.readByte()) {
                     TcpLookup.END_CHAR_CODE -> {
-                        handleRequest(ch, id, String(pendingRead.toByteArray(), UTF_8))
-                        pendingRead.reset()
+                        handleRequest(ch, id, pendingRead.readString())
+                        pendingRead.clear()
                     }
                     else -> {
-                        pendingRead.write(c)
+                        pendingRead.writeByte(c)
                     }
                 }
             }

@@ -19,10 +19,12 @@ import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.nio.ByteBuffer
-import kotlin.text.Charsets.UTF_8
+import kotlinx.io.Buffer
+import kotlinx.io.IOException
+import kotlinx.io.Source
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.indices
+import kotlinx.io.readString
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -115,18 +117,18 @@ open class PolicyRequestHandler(
     private inner class PolicyConnectionState : ConnectionState() {
         private var state = ReadState.NAME
         private var pendingPairName: String? = null
-        private val pendingRead = ByteArrayOutputStream()
+        private val pendingRead = Buffer()
         private val pendingRequest = ParametersBuilder()
 
         private fun pendingReadAsString(): String {
-            val string = String(pendingRead.toByteArray(), UTF_8)
-            pendingRead.reset()
+            val string = pendingRead.readString()
+            pendingRead.clear()
             return string
         }
 
-        override suspend fun read(ch: ByteWriteChannel, buffer: ByteBuffer) {
-            while (buffer.remaining() > 0) {
-                val c = buffer.get().toInt()
+        override suspend fun read(ch: ByteWriteChannel, buffer: Source) {
+            while (!buffer.exhausted()) {
+                val c = buffer.readByte()
                 when (state) {
                     ReadState.NAME -> when (c) {
                         LINE_END_CHAR_CODE -> {
@@ -138,7 +140,7 @@ open class PolicyRequestHandler(
                             state = ReadState.VALUE
                         }
                         else -> {
-                            pendingRead.write(c)
+                            pendingRead.writeByte(c)
                         }
                     }
 
@@ -148,7 +150,7 @@ open class PolicyRequestHandler(
                             state = ReadState.NAME
                         }
                         else -> {
-                            pendingRead.write(c)
+                            pendingRead.writeByte(c)
                         }
                     }
                 }
@@ -159,8 +161,8 @@ open class PolicyRequestHandler(
     companion object {
         const val MODE_NAME = "policy"
         private const val LINE_END_CHAR = '\n'
-        private const val LINE_END_CHAR_CODE = LINE_END_CHAR.code
-        private const val VALUE_SEPARATOR_CHAR_CODE = '='.code
+        private const val LINE_END_CHAR_CODE = LINE_END_CHAR.code.toByte()
+        private const val VALUE_SEPARATOR_CHAR_CODE = '='.code.toByte()
     }
 
     private enum class ReadState {

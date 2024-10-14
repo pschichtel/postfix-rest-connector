@@ -21,7 +21,5 @@ suspend fun main(args: Array<String>) {
     val config = Json.decodeFromString<Configuration>(configContent)
     val session = startSession(config)
 
-    Runtime.getRuntime().addShutdownHook(Thread { session.close() })
-
     session.join()
 }

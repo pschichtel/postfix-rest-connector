@@ -15,11 +15,13 @@ import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import kotlinx.io.Buffer
+import kotlinx.io.IOException
+import kotlinx.io.Source
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.indices
+import kotlinx.io.readString
 import tel.schich.postfixrestconnector.Netstring.compileOne
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.nio.ByteBuffer
-import kotlin.text.Charsets.UTF_8
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -152,11 +154,11 @@ open class SocketmapLookupHandler(
     private inner class SocketMapConnectionState : ConnectionState() {
         private var state = ReadState.LENGTH
         private var length = 0L
-        private val pendingRead = ByteArrayOutputStream()
+        private val pendingRead = Buffer()
 
-        override suspend fun read(ch: ByteWriteChannel, buffer: ByteBuffer) {
-            while (buffer.remaining() > 0) {
-                val c = buffer.get().toInt()
+        override suspend fun read(ch: ByteWriteChannel, buffer: Source) {
+            while (!buffer.exhausted()) {
+                val c = buffer.readByte()
                 when (state) {
                     ReadState.LENGTH -> when (c) {
                         LENGTH_VALUE_SEPARATOR_CHAR_CODE -> {
@@ -165,16 +167,16 @@ open class SocketmapLookupHandler(
                         else -> {
                             val digit = c - '0'.code
                             if (digit < 0 || digit > 9) {
-                                writeBrokenRequestErrorAndClose(ch, id, "Expected a digit, but got: ${c.toChar()} (code: $c)")
+                                writeBrokenRequestErrorAndClose(ch, id, "Expected a digit, but got: ${c.toInt().toChar()} (code: $c)")
                             }
                             length = length * 10 + digit
                         }
                     }
                     ReadState.VALUE -> {
-                        if (pendingRead.size() < length) {
-                            pendingRead.write(c)
+                        if (pendingRead.size < length) {
+                            pendingRead.writeByte(c)
                         }
-                        if (pendingRead.size() >= length) {
+                        if (pendingRead.size >= length) {
                             state = ReadState.END
                         }
                     }
@@ -182,11 +184,11 @@ open class SocketmapLookupHandler(
                         END_CHAR_CODE -> {
                             state = ReadState.LENGTH
                             length = 0
-                            handleRequest(ch, id, String(pendingRead.toByteArray(), UTF_8))
-                            pendingRead.reset()
+                            handleRequest(ch, id, pendingRead.readString())
+                            pendingRead.clear()
                         }
                         else -> {
-                            writeBrokenRequestErrorAndClose(ch, id, "Expected comma, but got: ${c.toChar()} (code: $c)")
+                            writeBrokenRequestErrorAndClose(ch, id, "Expected comma, but got: ${c.toInt().toChar()} (code: $c)")
                         }
                     }
                 }
@@ -197,8 +199,8 @@ open class SocketmapLookupHandler(
     companion object {
         const val MODE_NAME = "socketmap-lookup"
         private const val MAXIMUM_RESPONSE_LENGTH = 10000
-        private const val END_CHAR_CODE = ','.code
-        private const val LENGTH_VALUE_SEPARATOR_CHAR_CODE = ':'.code
+        private const val END_CHAR_CODE = ','.code.toByte()
+        private const val LENGTH_VALUE_SEPARATOR_CHAR_CODE = ':'.code.toByte()
     }
 
     private enum class ReadState {

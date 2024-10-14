@@ -1,6 +1,6 @@
 package tel.schich.postfixrestconnector
 
-import java.io.IOException
+import kotlinx.io.IOException
 
 object Netstring {
     private const val EMPTY = "0:,"

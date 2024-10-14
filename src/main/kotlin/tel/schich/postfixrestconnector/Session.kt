@@ -15,6 +15,7 @@ import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.readAvailable
+import io.ktor.utils.io.readByte
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -24,7 +25,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.nio.ByteBuffer
+import kotlinx.io.Buffer
 import java.net.http.HttpClient.Version.HTTP_2
 
 private val logger = KotlinLogging.logger {  }
@@ -113,18 +114,19 @@ private fun CoroutineScope.processConnection(
     logger.info { "Client ${socket.remoteAddress} connected to ${socket.localAddress} (endpoint: ${endpoint.name})" }
 
     return launch {
-        val buffer: ByteBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE)
+        val buffer = Buffer()
         val readChannel = socket.openReadChannel()
         val writeChannel = socket.openWriteChannel(autoFlush = false)
         val state = handler.createState()
 
         while (isActive) {
             buffer.clear()
-            if (readChannel.readAvailable(buffer) == -1) {
-                cancel()
-                break
-            }
-            buffer.flip()
+            // broken, fix me
+//            if (!readChannel.awaitContent()) {
+//                cancel()
+//                break
+//            }
+//            readChannel.readByte()
             try {
                 state.read(writeChannel, buffer)
             } finally {
