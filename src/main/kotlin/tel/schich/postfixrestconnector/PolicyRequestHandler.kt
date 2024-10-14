@@ -22,18 +22,20 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.util.UUID
 import kotlin.text.Charsets.UTF_8
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 private val logger = KotlinLogging.logger {  }
 
+@OptIn(ExperimentalUuidApi::class)
 open class PolicyRequestHandler(
     override val endpoint: Endpoint,
     private val http: HttpClient,
 ) : PostfixRequestHandler {
     override fun createState(): ConnectionState = PolicyConnectionState()
 
-    open suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, params: Parameters) {
+    open suspend fun handleRequest(ch: ByteWriteChannel, id: Uuid, params: Parameters) {
         logger.info { "$id - Policy request on endpoint ${endpoint.name}: $params" }
 
         val response = try {
@@ -87,23 +89,23 @@ open class PolicyRequestHandler(
         }
     }
 
-    private suspend fun writePermanentError(ch: ByteWriteChannel, id: UUID, message: String) {
+    private suspend fun writePermanentError(ch: ByteWriteChannel, id: Uuid, message: String) {
         logger.error { "$id - permanent error: $message" }
         writeActionResponse(ch, id, "554 $id - $message")
     }
 
-    private suspend fun writeTemporaryError(ch: ByteWriteChannel, id: UUID, message: String) {
+    private suspend fun writeTemporaryError(ch: ByteWriteChannel, id: Uuid, message: String) {
         logger.warn { "$id - temporary error: $message" }
         writeActionResponse(ch, id, "451 $id - $message")
     }
 
-    private suspend fun writeInvalidDataError(ch: ByteWriteChannel, id: UUID, response: HttpResponse, e: Exception) {
+    private suspend fun writeInvalidDataError(ch: ByteWriteChannel, id: Uuid, response: HttpResponse, e: Exception) {
         val bodyText = response.bodyAsText()
         logger.error(e) { "$id - Received invalid data with Content-Type '${response.contentType()}': $bodyText" }
         writeTemporaryError(ch, id, "REST connector received invalid data!")
     }
 
-    private suspend fun writeActionResponse(ch: ByteWriteChannel, id: UUID, action: String) {
+    private suspend fun writeActionResponse(ch: ByteWriteChannel, id: Uuid, action: String) {
         val text = "action=$action$LINE_END_CHAR$LINE_END_CHAR"
         val payload = Charsets.US_ASCII.encode(text)
         logger.info { "$id - Response: $text" }

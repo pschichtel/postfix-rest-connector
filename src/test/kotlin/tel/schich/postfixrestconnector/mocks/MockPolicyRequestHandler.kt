@@ -6,11 +6,13 @@ import io.ktor.utils.io.ByteWriteChannel
 import tel.schich.postfixrestconnector.Endpoint
 import tel.schich.postfixrestconnector.PolicyRequestHandler
 import tel.schich.postfixrestconnector.TestHttpClient
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalUuidApi::class)
 class MockPolicyRequestHandler(endpoint: Endpoint) : PolicyRequestHandler(endpoint, TestHttpClient) {
     private var data: Parameters? = null
-    override suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, params: Parameters) {
+    override suspend fun handleRequest(ch: ByteWriteChannel, id: Uuid, params: Parameters) {
         data = params
     }
 

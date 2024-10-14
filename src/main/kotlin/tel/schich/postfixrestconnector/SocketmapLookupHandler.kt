@@ -19,11 +19,13 @@ import tel.schich.postfixrestconnector.Netstring.compileOne
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.util.UUID
 import kotlin.text.Charsets.UTF_8
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 private val logger = KotlinLogging.logger {  }
 
+@OptIn(ExperimentalUuidApi::class)
 open class SocketmapLookupHandler(
     override val endpoint: Endpoint,
     private val http: HttpClient,
@@ -31,7 +33,7 @@ open class SocketmapLookupHandler(
 
     override fun createState(): ConnectionState = SocketMapConnectionState()
 
-    open suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, requestData: String) {
+    open suspend fun handleRequest(ch: ByteWriteChannel, id: Uuid, requestData: String) {
         logger.info { "$id - socketmap-lookup request on endpoint ${endpoint.name}: $requestData" }
         val spacePos = requestData.indexOf(' ')
         if (spacePos == -1) {
@@ -105,39 +107,39 @@ open class SocketmapLookupHandler(
         }
     }
 
-    private suspend fun writeOkResponse(ch: ByteWriteChannel, id: UUID, data: List<String>, separator: String) {
+    private suspend fun writeOkResponse(ch: ByteWriteChannel, id: Uuid, data: List<String>, separator: String) {
         writeResponse(ch, id, "OK " + encodeLookupResponse(data, separator))
     }
 
-    private suspend fun writeNotFoundResponse(ch: ByteWriteChannel, id: UUID) {
+    private suspend fun writeNotFoundResponse(ch: ByteWriteChannel, id: Uuid) {
         writeResponse(ch, id, "NOTFOUND ")
     }
 
-    private suspend fun writeBrokenRequestErrorAndClose(ch: ByteWriteChannel, id: UUID, reason: String) {
+    private suspend fun writeBrokenRequestErrorAndClose(ch: ByteWriteChannel, id: Uuid, reason: String) {
         logger.error { "$id - broken request: $reason" }
         writePermError(ch, id, "Broken request! ($reason)")
         error(reason)
     }
 
-    private suspend fun writeTimeoutError(ch: ByteWriteChannel, id: UUID, message: String) {
+    private suspend fun writeTimeoutError(ch: ByteWriteChannel, id: Uuid, message: String) {
         writeResponse(ch, id, "TIMEOUT $id - $message")
     }
 
-    private suspend fun writeTempError(ch: ByteWriteChannel, id: UUID, message: String?) {
+    private suspend fun writeTempError(ch: ByteWriteChannel, id: Uuid, message: String?) {
         writeResponse(ch, id, "TEMP $id - $message")
     }
 
-    private suspend fun writePermError(ch: ByteWriteChannel, id: UUID, message: String) {
+    private suspend fun writePermError(ch: ByteWriteChannel, id: Uuid, message: String) {
         writeResponse(ch, id, "PERM $id - $message")
     }
 
-    private suspend fun writeInvalidDataError(ch: ByteWriteChannel, id: UUID, response: HttpResponse, e: Exception) {
+    private suspend fun writeInvalidDataError(ch: ByteWriteChannel, id: Uuid, response: HttpResponse, e: Exception) {
         val bodyText = response.bodyAsText()
         logger.error(e) { "$id - Received invalid data with Content-Type '${response.contentType()}': $bodyText" }
         writeTempError(ch, id, "REST connector received invalid data!")
     }
 
-    private suspend fun writeResponse(ch: ByteWriteChannel, id: UUID, data: String) {
+    private suspend fun writeResponse(ch: ByteWriteChannel, id: Uuid, data: String) {
         if (data.length > MAXIMUM_RESPONSE_LENGTH) {
             error("$id - response to long")
         }

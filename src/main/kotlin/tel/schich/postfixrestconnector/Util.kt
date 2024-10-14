@@ -11,11 +11,13 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.takeFrom
 import java.io.IOException
 import java.net.ConnectException
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalUuidApi::class)
 suspend fun HttpClient.connectorEndpointRequest(
     endpoint: Endpoint,
-    id: UUID,
+    id: Uuid,
     logger: KLogger,
     builder: HttpRequestBuilder.() -> Unit,
 ): HttpResponse {
@@ -34,7 +36,8 @@ suspend fun HttpClient.connectorEndpointRequest(
     }
 }
 
-fun HttpRequestBuilder.logRequest(id: UUID, logger: KLogger) {
+@OptIn(ExperimentalUuidApi::class)
+fun HttpRequestBuilder.logRequest(id: Uuid, logger: KLogger) {
     val sb = StringBuilder()
     sb.append(method.value)
     sb.append(' ')

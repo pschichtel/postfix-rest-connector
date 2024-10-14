@@ -18,18 +18,20 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.util.UUID
 import kotlin.text.Charsets.UTF_8
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 private val logger = KotlinLogging.logger {  }
 
+@OptIn(ExperimentalUuidApi::class)
 class TcpLookupHandler(
     override val endpoint: Endpoint,
     private val http: HttpClient,
 ) : PostfixRequestHandler {
     override fun createState(): ConnectionState = TcpConnectionState()
 
-    suspend fun handleRequest(ch: ByteWriteChannel, id: UUID, rawRequest: String) {
+    suspend fun handleRequest(ch: ByteWriteChannel, id: Uuid, rawRequest: String) {
         logger.info { "$id - tcp-lookup request on endpoint ${endpoint.name}: $rawRequest" }
         if (rawRequest.length <= TcpLookup.LOOKUP_PREFIX.length || !rawRequest.startsWith(TcpLookup.LOOKUP_PREFIX)) {
             writeError(ch, id, "Broken request!")
@@ -101,25 +103,25 @@ class TcpLookupHandler(
         }
     }
 
-    private suspend fun writeSuccessfulResponse(ch: ByteWriteChannel, id: UUID, data: List<String>, separator: String) {
+    private suspend fun writeSuccessfulResponse(ch: ByteWriteChannel, id: Uuid, data: List<String>, separator: String) {
         writeResponse(ch, id, 200, encodeLookupResponse(data, separator))
     }
 
-    private suspend fun writeNotFoundResponse(ch: ByteWriteChannel, id: UUID) {
+    private suspend fun writeNotFoundResponse(ch: ByteWriteChannel, id: Uuid) {
         writeResponse(ch, id, 500, "$id - key not found")
     }
 
-    private suspend fun writeInvalidDataError(ch: ByteWriteChannel, id: UUID, response: HttpResponse, e: Exception) {
+    private suspend fun writeInvalidDataError(ch: ByteWriteChannel, id: Uuid, response: HttpResponse, e: Exception) {
         val bodyText = response.bodyAsText()
         logger.error(e) { "$id - Received invalid data with Content-Type '${response.contentType()}': $bodyText" }
         writeError(ch, id, "REST connector received invalid data!")
     }
 
-    private suspend fun writeError(ch: ByteWriteChannel, id: UUID, message: String?) {
+    private suspend fun writeError(ch: ByteWriteChannel, id: Uuid, message: String?) {
         writeResponse(ch, id, 400, "$id - $message")
     }
 
-    private suspend fun writeResponse(ch: ByteWriteChannel, id: UUID, code: Int, data: String) {
+    private suspend fun writeResponse(ch: ByteWriteChannel, id: Uuid, code: Int, data: String) {
         val text = code.toString() + ' ' + TcpLookup.encodeResponse(data) + TcpLookup.END_CHAR
         val payload = Charsets.US_ASCII.encode(text)
         if (payload.remaining() > TcpLookup.MAXIMUM_RESPONSE_LENGTH) {
