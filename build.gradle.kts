@@ -14,9 +14,9 @@ plugins {
 group = "tel.schich"
 version = "2.0.1-SNAPSHOT"
 
-val ktorVersion = "2.3.12"
-val coroutinesVersion = "1.8.1"
-val serializationVersion = " 1.7.1"
+val ktorVersion = "3.0.0"
+val coroutinesVersion = "1.9.0"
+val serializationVersion = " 1.7.3"
 
 repositories {
     mavenCentral()
@@ -30,9 +30,9 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.3.5")
-    implementation("io.github.oshai:kotlin-logging:5.1.0")
-    implementation("ch.qos.logback:logback-classic:1.5.6")
+    implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.5.4")
+    implementation("io.github.oshai:kotlin-logging:7.0.0")
+    implementation("ch.qos.logback:logback-classic:1.5.10")
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
 }

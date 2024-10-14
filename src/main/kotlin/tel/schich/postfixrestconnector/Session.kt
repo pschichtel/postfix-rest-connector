@@ -13,8 +13,8 @@ import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
-import io.ktor.network.sockets.tcpNoDelay
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -68,7 +68,6 @@ suspend fun startSession(config: Configuration, dispatcher: CoroutineDispatcher 
     val sockets = config.endpoints.map { endpoint ->
         val listenSocket = aSocket(selector)
             .tcp()
-            .tcpNoDelay()
             .bind(InetSocketAddress(endpoint.bindAddress, endpoint.bindPort))
 
         logger.info { "Bound endpoint ${endpoint.name} to address: ${listenSocket.localAddress}" }

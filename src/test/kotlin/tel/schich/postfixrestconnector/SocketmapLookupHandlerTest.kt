@@ -1,6 +1,6 @@
 package tel.schich.postfixrestconnector
 
-import io.ktor.client.plugins.HttpTimeout.Plugin.INFINITE_TIMEOUT_MS
+import io.ktor.client.plugins.HttpTimeoutConfig.Companion.INFINITE_TIMEOUT_MS
 import io.ktor.http.Url
 import io.ktor.utils.io.ByteChannel
 import kotlinx.coroutines.runBlocking

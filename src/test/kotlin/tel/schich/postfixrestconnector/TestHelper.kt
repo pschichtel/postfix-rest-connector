@@ -3,7 +3,7 @@ package tel.schich.postfixrestconnector
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.HttpTimeout.Plugin.INFINITE_TIMEOUT_MS
+import io.ktor.client.plugins.HttpTimeoutConfig.Companion.INFINITE_TIMEOUT_MS
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpResponseData
