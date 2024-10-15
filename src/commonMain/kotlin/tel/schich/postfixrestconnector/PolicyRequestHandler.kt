@@ -127,9 +127,8 @@ open class PolicyRequestHandler(
             return string
         }
 
-        override suspend fun read(ch: ByteWriteChannel, buffer: Source) {
-            while (!buffer.exhausted()) {
-                val c = buffer.readByte()
+        override suspend fun read(ch: ByteWriteChannel, buffer: Iterator<Byte>) {
+            for (c in buffer) {
                 when (state) {
                     ReadState.NAME -> when (c) {
                         LINE_END_CHAR_CODE -> {

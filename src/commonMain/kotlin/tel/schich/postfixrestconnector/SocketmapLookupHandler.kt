@@ -157,9 +157,8 @@ open class SocketmapLookupHandler(
         private var length = 0L
         private val pendingRead = Buffer()
 
-        override suspend fun read(ch: ByteWriteChannel, buffer: Source) {
-            while (!buffer.exhausted()) {
-                val c = buffer.readByte()
+        override suspend fun read(ch: ByteWriteChannel, buffer: Iterator<Byte>) {
+            for (c in buffer) {
                 when (state) {
                     ReadState.LENGTH -> when (c) {
                         LENGTH_VALUE_SEPARATOR_CHAR_CODE -> {

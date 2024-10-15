@@ -141,9 +141,9 @@ class TcpLookupHandler(
     private inner class TcpConnectionState : ConnectionState() {
         private val pendingRead = Buffer()
 
-        override suspend fun read(ch: ByteWriteChannel, buffer: Source) {
-            while (!buffer.exhausted()) {
-                when (val c = buffer.readByte()) {
+        override suspend fun read(ch: ByteWriteChannel, buffer: Iterator<Byte>) {
+            for (c in buffer) {
+                when (c) {
                     TcpLookup.END_CHAR_CODE -> {
                         handleRequest(ch, id, pendingRead.readString())
                         pendingRead.clear()

@@ -8,6 +8,7 @@ import kotlinx.coroutines.runBlocking
 import tel.schich.postfixrestconnector.mocks.MockSocketmapLookupHandler
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SocketmapLookupHandlerTest {
@@ -30,7 +31,7 @@ class SocketmapLookupHandlerTest {
         val buf = stringBuffer(encodedData)
         val state = handler.createState()
         state.read(ByteChannel(), buf)
-        assertTrue(buf.exhausted())
+        assertFalse(buf.hasNext())
         assertEquals(data, handler.data)
     }
 }

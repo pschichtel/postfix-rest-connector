@@ -9,6 +9,9 @@ import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
+import io.ktor.utils.io.core.writeText
+import io.ktor.utils.io.read
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -16,9 +19,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.io.Buffer
+import kotlinx.io.InternalIoApi
+import kotlinx.io.RawSink
+import kotlinx.io.RawSource
+import kotlinx.io.Source
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.unsafe.UnsafeByteStringOperations
 
 private val logger = KotlinLogging.logger {  }
 
@@ -89,6 +99,29 @@ suspend fun startSession(config: Configuration, dispatcher: CoroutineDispatcher 
     return Session(job, selector, sockets)
 }
 
+class Slice(private val buffer: ByteArray, private val offset: Int, val length: Int) : Sequence<Byte> {
+    override fun iterator(): Iterator<Byte> {
+        if (length == 0) {
+            return emptySequence<Byte>().iterator()
+        }
+        return iterator {
+            var i = 0
+            while (i < length) {
+                yield(buffer[offset + (i++)])
+            }
+        }
+    }
+}
+
+internal fun iterate(buffer: ByteArray, offset: Int, length: Int): Iterator<Byte> {
+    return iterator {
+        var i = 0
+        while (i < length) {
+            yield(buffer[offset + (i++)])
+        }
+    }
+}
+
 private fun CoroutineScope.processConnection(
     endpoint: Endpoint,
     socket: Socket,
@@ -97,21 +130,22 @@ private fun CoroutineScope.processConnection(
     logger.info { "Client ${socket.remoteAddress} connected to ${socket.localAddress} (endpoint: ${endpoint.name})" }
 
     return launch {
-        val buffer = Buffer()
+        val b = Buffer()
+
+        val buffer = ByteArray(READ_BUFFER_SIZE)
+        b.write(buffer)
         val readChannel = socket.openReadChannel()
         val writeChannel = socket.openWriteChannel(autoFlush = false)
         val state = handler.createState()
 
         while (isActive) {
-            buffer.clear()
-            // broken, fix me
-//            if (!readChannel.awaitContent()) {
-//                cancel()
-//                break
-//            }
-//            readChannel.readByte()
+            val bytesRead = readChannel.readAvailable(buffer)
+            if (bytesRead == -1) {
+                cancel()
+                break
+            }
             try {
-                state.read(writeChannel, buffer)
+                state.read(writeChannel, iterate(buffer, 0, bytesRead))
             } finally {
                 writeChannel.flush()
             }
