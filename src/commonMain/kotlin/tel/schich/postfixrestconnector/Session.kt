@@ -99,20 +99,6 @@ suspend fun startSession(config: Configuration, dispatcher: CoroutineDispatcher 
     return Session(job, selector, sockets)
 }
 
-class Slice(private val buffer: ByteArray, private val offset: Int, val length: Int) : Sequence<Byte> {
-    override fun iterator(): Iterator<Byte> {
-        if (length == 0) {
-            return emptySequence<Byte>().iterator()
-        }
-        return iterator {
-            var i = 0
-            while (i < length) {
-                yield(buffer[offset + (i++)])
-            }
-        }
-    }
-}
-
 internal fun iterate(buffer: ByteArray, offset: Int, length: Int): Iterator<Byte> {
     return iterator {
         var i = 0
