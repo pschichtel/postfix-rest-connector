@@ -1,6 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
-import org.jetbrains.kotlin.gradle.plugin.HasKotlinDependencies
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -92,22 +91,10 @@ kotlin {
             }
         }
 
-        fun HasKotlinDependencies.nativeDependencies() {
+        val nativeMain by creating {
             dependencies {
                 api("io.ktor:ktor-client-cio")
             }
-        }
-
-        val linuxX64Main by getting {
-            nativeDependencies()
-        }
-
-        val linuxArm64Main by getting {
-            nativeDependencies()
-        }
-
-        val mingwX64Main by getting {
-            nativeDependencies()
         }
 
         val commonTest by getting {
