@@ -14,9 +14,9 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@v1
+        uses: gradle/wrapper-validation-action@v3
       - name: Check
-        uses: gradle/gradle-build-action@v3.5.0
+        uses: gradle/gradle-build-action@v3
         with:
           arguments: check
       - name: Login to GitHub Container Registry
