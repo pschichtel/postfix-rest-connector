@@ -34,9 +34,9 @@ jobs:
           image_name="ghcr.io/pschichtel/${name}:${version}-native"
           
           ./gradlew linuxX64MainBinaries --console=plain
-          docker build --build-arg FILE_PATH=./build/bin/linuxX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
+          docker build --platform linux/amd64 --build-arg FILE_PATH=./build/bin/linuxX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
           
           ./gradlew linuxArm64MainBinaries --console=plain
-          docker build --arch aarch64 --build-arg FILE_PATH=./build/bin/linuxArmX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
+          docker build --platform linux/arm64 --build-arg FILE_PATH=./build/bin/linuxArmX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
           
           docker push "$image_name"
