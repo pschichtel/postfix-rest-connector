@@ -35,8 +35,8 @@ jobs:
           
           ./gradlew linuxX64MainBinaries --console=plain
           docker build --platform linux/amd64 --build-arg FILE_PATH=./build/bin/linuxX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
+          docker push --platform linux/amd64 "$image_name"
           
           ./gradlew linuxArm64MainBinaries --console=plain
           docker build --platform linux/arm64 --build-arg FILE_PATH=./build/bin/linuxArm64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
-          
-          docker push "$image_name"
+          docker push --platform linux/arm64 "$image_name"
