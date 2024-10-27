@@ -1,11 +1,12 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     signing
     java
     `maven-publish`
-    kotlin("jvm")
+    kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("com.google.cloud.tools.jib")
     id("io.gitlab.arturbosch.detekt")
@@ -16,35 +17,84 @@ version = "2.0.1-SNAPSHOT"
 
 val ktorVersion = "3.0.0"
 val coroutinesVersion = "1.9.0"
-val serializationVersion = " 1.7.3"
+val serializationVersion = "1.7.3"
 
 repositories {
     mavenCentral()
-}
-
-dependencies {
-    implementation("io.ktor:ktor-client-core:$ktorVersion")
-    implementation("io.ktor:ktor-client-java:$ktorVersion")
-    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
-    implementation("io.ktor:ktor-network:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.5.4")
-    implementation("io.github.oshai:kotlin-logging:7.0.0")
-    implementation("ch.qos.logback:logback-classic:1.5.10")
-    testImplementation(kotlin("test"))
-    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-kotlin {
-    jvmToolchain {
+java {
+    toolchain {
         vendor = JvmVendorSpec.ADOPTIUM
         languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+kotlin {
+    jvm {
+        withJava()
+        compilations.all {
+            compileTaskProvider.configure {
+                compilerOptions {
+                    jvmTarget.set(JVM_11)
+                    freeCompilerArgs.add("-progressive")
+                }
+            }
+        }
+    }
+
+    linuxX64()
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                api(project.dependencies.platform("io.ktor:ktor-bom:$ktorVersion"))
+                api(project.dependencies.platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:$serializationVersion"))
+                api(project.dependencies.platform("org.jetbrains.kotlinx:kotlinx-coroutines-bom:$coroutinesVersion"))
+                api("io.ktor:ktor-client-core")
+                api("io.ktor:ktor-client-content-negotiation")
+                api("io.ktor:ktor-network")
+                api("io.ktor:ktor-serialization-kotlinx-json")
+                api("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+                api("org.jetbrains.kotlinx:kotlinx-serialization-json")
+                api("org.jetbrains.kotlinx:kotlinx-io-core:0.5.4")
+                api("io.github.oshai:kotlin-logging:7.0.0")
+            }
+        }
+
+        val jvmMain by getting {
+            dependencies {
+                api("io.ktor:ktor-client-java")
+            }
+        }
+
+        val linuxX64Main by getting {
+            dependencies {
+                api("io.ktor:ktor-client-cio")
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(kotlin("test-common"))
+                implementation(kotlin("test-annotations-common"))
+                implementation("io.ktor:ktor-client-mock")
+                implementation("io.ktor:ktor-server-core")
+                implementation("io.ktor:ktor-server-cio")
+                implementation("io.ktor:ktor-server-content-negotiation")
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation("ch.qos.logback:logback-classic:1.5.12")
+            }
+        }
     }
 }
 
