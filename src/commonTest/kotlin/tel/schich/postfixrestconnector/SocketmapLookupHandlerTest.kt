@@ -1,12 +1,13 @@
 package tel.schich.postfixrestconnector
 
 import io.ktor.http.HttpStatusCode.Companion.OK
+import tel.schich.postfixrestconnector.SocketmapLookupHandler.Companion.MODE_NAME
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SocketmapLookupHandlerTest {
     @Test
-    fun testRequest() = systemTest(SocketmapLookupHandler.MODE_NAME) {
+    fun testRequest() = systemTest(MODE_NAME) {
         val key = "test"
         val data = "0123456789"
 

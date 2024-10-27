@@ -2,11 +2,12 @@ package tel.schich.postfixrestconnector
 
 import io.ktor.http.HttpStatusCode.Companion.OK
 import kotlinx.coroutines.delay
+import tel.schich.postfixrestconnector.TcpLookupHandler.Companion.MODE_NAME
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TcpLookupHandlerTest {
-    private fun queryTest(key: String, results: List<String>, expected: String) = systemTest(TcpLookupHandler.MODE_NAME) {
+    private fun queryTest(key: String, results: List<String>, expected: String) = systemTest(MODE_NAME) {
         writeln("get $key")
 
         val (call, _, response) = receiveReq()
@@ -20,7 +21,7 @@ class TcpLookupHandlerTest {
     private fun encodingTest(input: String, expected: String) =
         queryTest("k", listOf(input), expected)
 
-    private fun decodeTest(input: String, expected: String) = systemTest(TcpLookupHandler.MODE_NAME) {
+    private fun decodeTest(input: String, expected: String) = systemTest(MODE_NAME) {
         writeln("get $input")
 
         val (call) = receiveReq()
@@ -48,7 +49,7 @@ class TcpLookupHandlerTest {
     }
 
     @Test
-    fun simpleQuery() = systemTest(TcpLookupHandler.MODE_NAME) {
+    fun simpleQuery() = systemTest(MODE_NAME) {
         val key = "k"
         val response1 = "r1"
         val response2 = "r2"
@@ -63,7 +64,7 @@ class TcpLookupHandlerTest {
     }
 
     @Test
-    fun simpleQueryWithPartialWrites() = systemTest(TcpLookupHandler.MODE_NAME) {
+    fun simpleQueryWithPartialWrites() = systemTest(MODE_NAME) {
         val key = "k"
         val response1 = "r1"
         val response2 = "r2"

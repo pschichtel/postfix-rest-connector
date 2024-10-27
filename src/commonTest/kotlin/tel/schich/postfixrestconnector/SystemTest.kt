@@ -53,6 +53,10 @@ class TestContext(
         writeChannel.flush()
     }
 
+    suspend fun writeln() {
+        write("\n")
+    }
+
     suspend fun writeln(s: String) {
         write(s + "\n")
     }

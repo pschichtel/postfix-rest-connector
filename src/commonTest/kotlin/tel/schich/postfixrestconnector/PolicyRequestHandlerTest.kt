@@ -1,88 +1,92 @@
 package tel.schich.postfixrestconnector
 
-//import io.ktor.http.Url
-//import io.ktor.utils.io.ByteChannel
-//import kotlinx.coroutines.runBlocking
-//import tel.schich.postfixrestconnector.mocks.MockPolicyRequestHandler
-//import kotlin.test.Test
-//import kotlin.test.assertEquals
-//import kotlin.test.assertFalse
-//import kotlin.test.assertNotNull
-//import kotlin.test.assertNull
-//
-//class PolicyRequestHandlerTest {
-//    private val endpoint = Endpoint(
-//        "test-policy",
-//        Url("http://localhost"),
-//        "0.0.0.0",
-//        9000,
-//        "test123",
-//        1,
-//        "policy",
-//        DEFAULT_RESPONSE_VALUE_SEPARATOR
-//    )
-//    private val handler = MockPolicyRequestHandler(endpoint)
-//
-//    @Test
-//    fun readCompleteRequestComplete() = runBlocking {
-//        val firstLine = "a=b\n\n"
-//        val buf = stringBuffer(firstLine)
-//        val state = handler.createState()
-//        state.read(ByteChannel(), buf)
-//        assertFalse(buf.hasNext())
-//        val data = handler.getDataAsPairs()
-//        assertNotNull(data)
-//        assertEquals(1, data.size)
-//        assertEquals(data[0], Pair("a", "b"))
-//    }
-//
-//    @Test
-//    fun readCompleteRequestBroken() = runBlocking {
-//        val firstLine = "a=b\n\na"
-//        val buf = stringBuffer(firstLine)
-//        val state = handler.createState()
-//        state.read(ByteChannel(), buf)
-//        assertFalse(buf.hasNext())
-//        val data = handler.getDataAsPairs()
-//        assertNotNull(data)
-//        assertEquals(1, data.size)
-//        assertEquals(data[0], Pair("a", "b"))
-//    }
-//
-//    @Test
-//    fun readFragmentedRequestComplete() = runBlocking {
-//        val firstLine = "a=b\n"
-//        val secondLine = "\n"
-//        val state = handler.createState()
-//        var buf = stringBuffer(firstLine)
-//        state.read(ByteChannel(), buf)
-//        assertFalse(buf.hasNext())
-//        var data = handler.getDataAsPairs()
-//        assertNull(data)
-//        buf = stringBuffer(secondLine)
-//        state.read(ByteChannel(), buf)
-//        assertFalse(buf.hasNext())
-//        data = handler.getDataAsPairs()
-//        assertEquals(listOf(Pair("a", "b")), data)
-//    }
-//
-//    @Test
-//    fun readFragmentedRequestBroken() = runBlocking {
-//        val firstLine = "a=b\n"
-//        val secondLine = "\na"
-//        val rest = "=c\n\n"
-//        val state = handler.createState()
-//        var buf = stringBuffer(firstLine)
-//        state.read(ByteChannel(), buf)
-//        assertFalse(buf.hasNext())
-//        assertNull(handler.getData())
-//        buf = stringBuffer(secondLine)
-//        state.read(ByteChannel(), buf)
-//        assertFalse(buf.hasNext())
-//        assertEquals(listOf(Pair("a", "b")), handler.getDataAsPairs())
-//        buf = stringBuffer(rest)
-//        state.read(ByteChannel(), buf)
-//        assertFalse(buf.hasNext())
-//        assertEquals(listOf(Pair("a", "c")), handler.getDataAsPairs())
-//    }
-//}
+import io.ktor.http.HttpStatusCode.Companion.OK
+import tel.schich.postfixrestconnector.PolicyRequestHandler.Companion.MODE_NAME
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+
+class PolicyRequestHandlerTest {
+    @Test
+    fun readCompleteRequestComplete() = systemTest(MODE_NAME) {
+        write("a=b\n\n")
+
+        val (_, body, response) = receiveReq()
+
+        assertNotNull(body)
+        val params = body.split("\n").map {
+            val (name, value) = it.split("=", limit = 2)
+            name to value
+        }
+        assertEquals(listOf("a" to "b"), params)
+
+        response.complete(OK with "accept")
+
+        assertEquals("action=accept", readln())
+    }
+
+    @Test
+    fun readCompleteRequestBroken() = systemTest(MODE_NAME) {
+        write("a=b\n\na")
+
+        val (_, body, response) = receiveReq()
+
+        assertNotNull(body)
+        val params = body.split("\n").map {
+            val (name, value) = it.split("=", limit = 2)
+            name to value
+        }
+        assertEquals(listOf("a" to "b"), params)
+
+        response.complete(OK with "accept")
+
+        assertEquals("action=accept", readln())
+    }
+
+    @Test
+    fun readFragmentedRequestComplete() = systemTest(MODE_NAME) {
+        writeln("a=b")
+        writeln()
+
+        val (_, body, response) = receiveReq()
+
+        assertNotNull(body)
+        val params = body.split("\n").map {
+            val (name, value) = it.split("=", limit = 2)
+            name to value
+        }
+        assertEquals(listOf("a" to "b"), params)
+
+        response.complete(OK with "accept")
+
+        assertEquals("action=accept", readln())
+    }
+
+    @Test
+    fun readFragmentedRequestBroken() = systemTest(MODE_NAME) {
+
+        suspend fun handle(expectedParams: List<Pair<String, String>>) {
+            val (_, body, response) = receiveReq()
+
+            assertNotNull(body)
+            val actualParams = body.split("\n").map {
+                val (name, value) = it.split("=", limit = 2)
+                name to value
+            }
+            assertEquals(expectedParams, actualParams)
+
+            response.complete(OK with "accept")
+
+            assertEquals("action=accept", readln())
+            assertEquals("", readln())
+        }
+
+        write("a=b\n")
+        write("\na")
+        handle(listOf("a" to "b"))
+
+
+        write("=c\n\n")
+        handle(listOf("a" to "c"))
+    }
+}
