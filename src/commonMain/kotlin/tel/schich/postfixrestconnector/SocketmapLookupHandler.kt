@@ -19,7 +19,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.io.Buffer
 import kotlinx.io.IOException
-import kotlinx.io.Source
 import kotlinx.io.readString
 import tel.schich.postfixrestconnector.Netstring.compileOne
 import kotlin.uuid.ExperimentalUuidApi
@@ -157,39 +156,37 @@ open class SocketmapLookupHandler(
         private var length = 0L
         private val pendingRead = Buffer()
 
-        override suspend fun read(ch: ByteWriteChannel, buffer: Iterator<Byte>) {
-            for (c in buffer) {
-                when (state) {
-                    ReadState.LENGTH -> when (c) {
-                        LENGTH_VALUE_SEPARATOR_CHAR_CODE -> {
-                            state = ReadState.VALUE
-                        }
-                        else -> {
-                            val digit = c - '0'.code
-                            if (digit < 0 || digit > 9) {
-                                writeBrokenRequestErrorAndClose(ch, id, "Expected a digit, but got: ${c.toInt().toChar()} (code: $c)")
-                            }
-                            length = length * 10 + digit
-                        }
+        override suspend fun read(ch: ByteWriteChannel, byte: Byte) {
+            when (state) {
+                ReadState.LENGTH -> when (byte) {
+                    LENGTH_VALUE_SEPARATOR_CHAR_CODE -> {
+                        state = ReadState.VALUE
                     }
-                    ReadState.VALUE -> {
-                        if (pendingRead.size < length) {
-                            pendingRead.writeByte(c)
+                    else -> {
+                        val digit = byte - '0'.code
+                        if (digit < 0 || digit > 9) {
+                            writeBrokenRequestErrorAndClose(ch, id, "Expected a digit, but got: ${byte.toInt().toChar()} (code: $byte)")
                         }
-                        if (pendingRead.size >= length) {
-                            state = ReadState.END
-                        }
+                        length = length * 10 + digit
                     }
-                    ReadState.END -> when (c) {
-                        END_CHAR_CODE -> {
-                            state = ReadState.LENGTH
-                            length = 0
-                            handleRequest(ch, id, pendingRead.readString())
-                            pendingRead.clear()
-                        }
-                        else -> {
-                            writeBrokenRequestErrorAndClose(ch, id, "Expected comma, but got: ${c.toInt().toChar()} (code: $c)")
-                        }
+                }
+                ReadState.VALUE -> {
+                    if (pendingRead.size < length) {
+                        pendingRead.writeByte(byte)
+                    }
+                    if (pendingRead.size >= length) {
+                        state = ReadState.END
+                    }
+                }
+                ReadState.END -> when (byte) {
+                    END_CHAR_CODE -> {
+                        state = ReadState.LENGTH
+                        length = 0
+                        handleRequest(ch, id, pendingRead.readString())
+                        pendingRead.clear()
+                    }
+                    else -> {
+                        writeBrokenRequestErrorAndClose(ch, id, "Expected comma, but got: ${byte.toInt().toChar()} (code: $byte)")
                     }
                 }
             }

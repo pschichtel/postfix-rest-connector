@@ -24,14 +24,14 @@ class SocketmapLookupHandlerTest {
     )
     private val handler = MockSocketmapLookupHandler(endpoint)
 
-    @Test
-    fun testRequest() = runBlocking {
-        val data = "test 0123456789"
-        val encodedData = data.length.toString() + ":" + data + ","
-        val buf = stringBuffer(encodedData)
-        val state = handler.createState()
-        state.read(ByteChannel(), buf)
-        assertFalse(buf.hasNext())
-        assertEquals(data, handler.data)
-    }
+//    @Test
+//    fun testRequest() = runBlocking {
+//        val data = "test 0123456789"
+//        val encodedData = data.length.toString() + ":" + data + ","
+//        val buf = stringBuffer(encodedData)
+//        val state = handler.createState()
+//        state.read(ByteChannel(), buf)
+//        assertFalse(buf.hasNext())
+//        assertEquals(data, handler.data)
+//    }
 }

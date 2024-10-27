@@ -23,7 +23,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.io.Buffer
 import kotlinx.io.IOException
-import kotlinx.io.Source
 import kotlinx.io.readString
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -127,31 +126,29 @@ open class PolicyRequestHandler(
             return string
         }
 
-        override suspend fun read(ch: ByteWriteChannel, buffer: Iterator<Byte>) {
-            for (c in buffer) {
-                when (state) {
-                    ReadState.NAME -> when (c) {
-                        LINE_END_CHAR_CODE -> {
-                            handleRequest(ch, id, pendingRequest.build())
-                            pendingRequest.clear()
-                        }
-                        VALUE_SEPARATOR_CHAR_CODE -> {
-                            pendingPairName = pendingReadAsString()
-                            state = ReadState.VALUE
-                        }
-                        else -> {
-                            pendingRead.writeByte(c)
-                        }
+        override suspend fun read(ch: ByteWriteChannel, byte: Byte) {
+            when (state) {
+                ReadState.NAME -> when (byte) {
+                    LINE_END_CHAR_CODE -> {
+                        handleRequest(ch, id, pendingRequest.build())
+                        pendingRequest.clear()
                     }
+                    VALUE_SEPARATOR_CHAR_CODE -> {
+                        pendingPairName = pendingReadAsString()
+                        state = ReadState.VALUE
+                    }
+                    else -> {
+                        pendingRead.writeByte(byte)
+                    }
+                }
 
-                    ReadState.VALUE -> when (c) {
-                        LINE_END_CHAR_CODE -> {
-                            pendingRequest.append(pendingPairName!!, pendingReadAsString())
-                            state = ReadState.NAME
-                        }
-                        else -> {
-                            pendingRead.writeByte(c)
-                        }
+                ReadState.VALUE -> when (byte) {
+                    LINE_END_CHAR_CODE -> {
+                        pendingRequest.append(pendingPairName!!, pendingReadAsString())
+                        state = ReadState.NAME
+                    }
+                    else -> {
+                        pendingRead.writeByte(byte)
                     }
                 }
             }

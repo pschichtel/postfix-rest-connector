@@ -41,6 +41,8 @@ class Session(
     private val selector: SelectorManager,
     private val listenSockets: List<ServerSocket>,
 ) {
+    fun bindAddresses() = listenSockets.map { it.localAddress as InetSocketAddress }
+
     suspend fun join() {
         job.join()
     }
@@ -131,7 +133,9 @@ private fun CoroutineScope.processConnection(
                 break
             }
             try {
-                state.read(writeChannel, iterate(buffer, 0, bytesRead))
+                for (i in 0 until bytesRead) {
+                    state.read(writeChannel, buffer[i])
+                }
             } finally {
                 writeChannel.flush()
             }

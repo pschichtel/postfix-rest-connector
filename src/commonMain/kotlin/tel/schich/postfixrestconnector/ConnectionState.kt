@@ -8,5 +8,5 @@ abstract class ConnectionState {
     @OptIn(ExperimentalUuidApi::class)
     val id: Uuid = Uuid.random()
 
-    abstract suspend fun read(ch: ByteWriteChannel, buffer: Iterator<Byte>)
+    abstract suspend fun read(ch: ByteWriteChannel, byte: Byte)
 }
