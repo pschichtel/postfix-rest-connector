@@ -19,6 +19,7 @@ import io.ktor.util.reflect.typeInfo
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readUTF8Line
 import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.CompletableDeferred
@@ -39,7 +40,12 @@ data class Req(val call: RoutingCall, val body: String?, val response: Completab
 @OptIn(ExperimentalUuidApi::class)
 private fun randomString(): String = Uuid.random().toString()
 
-class TestContext(val readChannel: ByteReadChannel, val writeChannel: ByteWriteChannel, private val calls: Channel<Req>) {
+class TestContext(
+    val readChannel: ByteReadChannel,
+    val writeChannel: ByteWriteChannel,
+    private val calls: Channel<Req>,
+    val endpoint: Endpoint,
+) {
     suspend fun receiveReq() = calls.receive()
 
     suspend fun write(s: String) {
@@ -53,6 +59,15 @@ class TestContext(val readChannel: ByteReadChannel, val writeChannel: ByteWriteC
 
     suspend fun readln(): String? {
         return readChannel.readUTF8Line()
+    }
+
+    suspend fun readAvailable(): String? {
+        val buf = ByteArray(12000)
+        val bytesRead = readChannel.readAvailable(buf)
+        if (bytesRead == 0) {
+            return null
+        }
+        return buf.decodeToString(0, bytesRead)
     }
 
     inline infix fun <reified T : Any> HttpStatusCode.with(msg: T?): Res {
@@ -140,7 +155,7 @@ fun systemTest(mode: String, block: suspend TestContext.() -> Unit) {
         val readChannel = ByteChannel()
         listenSocket.attachForReading(readChannel)
 
-        val ctx = TestContext(readChannel, writeChannel, calls)
+        val ctx = TestContext(readChannel, writeChannel, calls, endpoint)
         ctx.block()
 
         session.close()
