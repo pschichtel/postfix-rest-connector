@@ -27,8 +27,6 @@ jobs:
       - name: Build Java Container
         run: |
           ./gradlew jib --console=plain
-        with:
-          arguments: jib --console=plain
       - name: Build Linux Arm64 Binary
         run: |
           name="$(grep "rootProject.name = " settings.gradle.kts | cut -d'"' -f2)"
