@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -47,8 +48,20 @@ kotlin {
         }
     }
 
-    linuxX64()
-    linuxArm64()
+    linuxX64 {
+        binaries {
+            executable(listOf(NativeBuildType.RELEASE, NativeBuildType.DEBUG)) {
+                entryPoint = "tel.schich.postfixrestconnector.main"
+            }
+        }
+    }
+    linuxArm64 {
+        binaries {
+            executable(listOf(NativeBuildType.RELEASE, NativeBuildType.DEBUG)) {
+                entryPoint = "tel.schich.postfixrestconnector.main"
+            }
+        }
+    }
 
     sourceSets {
         val commonMain by getting {

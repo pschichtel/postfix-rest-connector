@@ -14,7 +14,7 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@v1
       - name: Check
-        uses: gradle/gradle-build-action@v2.11.1
+        uses: gradle/gradle-build-action@v3.5.0
         with:
           arguments: check
       - name: Login to GitHub Container Registry
@@ -23,7 +23,22 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build
-        uses: gradle/gradle-build-action@v2.11.1
+      - name: Build Java Container
+        uses: gradle/gradle-build-action@v3.5.0
         with:
           arguments: jib --console=plain
+      - name: Build Linux X86_64 Binary
+        uses: gradle/gradle-build-action@v3.5.0
+        with:
+          arguments: linuxX64MainBinaries --console=plain
+      - name: Build Linux Arm64 Binary
+        uses: gradle/gradle-build-action@v3.5.0
+        with:
+          arguments: linuxArm64MainBinaries --console=plain
+      - name: Build Native Containers
+        run: |
+          version="$(grep 'version =' build.gradle.kts | cut -d'"' -f2)"
+          image_name="ghcr.io/pschichtel/postfix-rest-connector:${version}-native"
+          docker build --build-arg FILE_PATH=./build/bin/linuxArmX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
+          docker build --arch aarch64 --build-arg FILE_PATH=./build/bin/linuxArmX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
+          docker push "$image_name"
