@@ -1,11 +1,11 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     signing
-    java
     `maven-publish`
     kotlin("multiplatform")
     kotlin("plugin.serialization")
@@ -48,19 +48,20 @@ kotlin {
         }
     }
 
-    linuxX64 {
+    fun KotlinNativeTarget.configureNativeTarget() {
         binaries {
             executable(listOf(NativeBuildType.RELEASE, NativeBuildType.DEBUG)) {
                 entryPoint = "tel.schich.postfixrestconnector.main"
             }
         }
     }
+
+    linuxX64 {
+        configureNativeTarget()
+    }
+
     linuxArm64 {
-        binaries {
-            executable(listOf(NativeBuildType.RELEASE, NativeBuildType.DEBUG)) {
-                entryPoint = "tel.schich.postfixrestconnector.main"
-            }
-        }
+        configureNativeTarget()
     }
 
     sourceSets {
@@ -96,10 +97,6 @@ kotlin {
             dependencies {
                 api("io.ktor:ktor-client-cio")
             }
-        }
-
-        for (sourceSet in sourceSets) {
-            println("Source Set: ${sourceSet.name}")
         }
 
         val commonTest by getting {
