@@ -27,13 +27,13 @@ jobs:
       - name: Build Java Container
         run: |
           ./gradlew jib --console=plain
-      - name: Build Linux Arm64 Binary
+      - name: Build Linux Binary Containers
         run: |
           name="$(grep "rootProject.name = " settings.gradle.kts | cut -d'"' -f2)"
           version="$(grep 'version =' build.gradle.kts | cut -d'"' -f2)"
           image_name="ghcr.io/pschichtel/${name}:${version}-native"
           ./gradlew linuxX64MainBinaries --console=plain
-          docker build --build-arg FILE_PATH=./build/bin/linuxArmX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
-          ./gradlew linuxArm64MainBinaries --console=plain
           docker build --arch aarch64 --build-arg FILE_PATH=./build/bin/linuxArmX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
+          ./gradlew linuxArm64MainBinaries --console=plain
+          docker build --build-arg FILE_PATH=./build/bin/linuxArmX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_name" .
           docker push "$image_name"
