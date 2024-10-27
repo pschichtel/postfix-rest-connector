@@ -48,6 +48,7 @@ kotlin {
     }
 
     linuxX64()
+    linuxArm64()
 
     sourceSets {
         val commonMain by getting {
@@ -76,6 +77,16 @@ kotlin {
             dependencies {
                 api("io.ktor:ktor-client-cio")
             }
+        }
+
+        val linuxArm64Main by getting {
+            dependencies {
+                api("io.ktor:ktor-client-cio")
+            }
+        }
+
+        for (sourceSet in sourceSets) {
+            println("Source Set: ${sourceSet.name}")
         }
 
         val commonTest by getting {
