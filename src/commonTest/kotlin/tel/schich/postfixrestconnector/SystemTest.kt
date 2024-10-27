@@ -18,6 +18,8 @@ import io.ktor.util.reflect.TypeInfo
 import io.ktor.util.reflect.typeInfo
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.readUTF8Line
 import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +39,22 @@ data class Req(val call: RoutingCall, val body: String?, val response: Completab
 @OptIn(ExperimentalUuidApi::class)
 private fun randomString(): String = Uuid.random().toString()
 
-class TestContext {
+class TestContext(val readChannel: ByteReadChannel, val writeChannel: ByteWriteChannel, private val calls: Channel<Req>) {
+    suspend fun receiveReq() = calls.receive()
+
+    suspend fun write(s: String) {
+        writeChannel.writeStringUtf8(s)
+        writeChannel.flush()
+    }
+
+    suspend fun writeln(s: String) {
+        write(s + "\n")
+    }
+
+    suspend fun readln(): String? {
+        return readChannel.readUTF8Line()
+    }
+
     inline infix fun <reified T : Any> HttpStatusCode.with(msg: T?): Res {
         return if (msg == null) {
             Res(this, null)
@@ -47,7 +64,7 @@ class TestContext {
     }
 }
 
-fun systemTest(mode: String, block: suspend TestContext.(suspend (String) -> Unit, ByteReadChannel, Channel<Req>) -> Unit) {
+fun systemTest(mode: String, block: suspend TestContext.() -> Unit) {
     val name = randomString()
     val targetPath = "/$name"
     val authToken = name
@@ -123,13 +140,8 @@ fun systemTest(mode: String, block: suspend TestContext.(suspend (String) -> Uni
         val readChannel = ByteChannel()
         listenSocket.attachForReading(readChannel)
 
-        suspend fun write(s: String) {
-            writeChannel.writeStringUtf8(s + "\n")
-            writeChannel.flush()
-        }
-
-        val ctx = TestContext()
-        ctx.block(::write, readChannel, calls)
+        val ctx = TestContext(readChannel, writeChannel, calls)
+        ctx.block()
 
         session.close()
     }

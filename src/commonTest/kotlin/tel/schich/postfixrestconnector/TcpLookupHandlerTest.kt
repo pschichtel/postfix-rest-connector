@@ -1,29 +1,29 @@
 package tel.schich.postfixrestconnector
 
 import io.ktor.http.HttpStatusCode.Companion.OK
-import io.ktor.utils.io.readUTF8Line
+import kotlinx.coroutines.delay
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TcpLookupHandlerTest {
-    private fun queryTest(key: String, results: List<String>, expected: String) = systemTest(TcpLookupHandler.MODE_NAME) { write, readChannel, requests ->
-        write("get $key")
+    private fun queryTest(key: String, results: List<String>, expected: String) = systemTest(TcpLookupHandler.MODE_NAME) {
+        writeln("get $key")
 
-        val (call, _, response) = requests.receive()
+        val (call, _, response) = receiveReq()
         assertEquals(key, call.parameters["key"])
 
         response.complete(OK with results)
 
-        assertEquals("200 $expected", readChannel.readUTF8Line())
+        assertEquals("200 $expected", readln())
     }
 
     private fun encodingTest(input: String, expected: String) =
         queryTest("k", listOf(input), expected)
 
-    private fun decodeTest(input: String, expected: String) = systemTest(TcpLookupHandler.MODE_NAME) { write, readChannel, requests ->
-        write("get $input")
+    private fun decodeTest(input: String, expected: String) = systemTest(TcpLookupHandler.MODE_NAME) {
+        writeln("get $input")
 
-        val (call) = requests.receive()
+        val (call) = receiveReq()
         assertEquals(expected, call.parameters["key"])
     }
 
@@ -33,7 +33,7 @@ class TcpLookupHandlerTest {
     }
 
     @Test
-    fun testDecodeE2E() = systemTest(TcpLookupHandler.MODE_NAME) { write, readChannel, requests ->
+    fun testDecodeE2E() {
         decodeTest("+%20%25&%C2%A7%C3%9F", "+ %&§ß")
     }
 
@@ -48,18 +48,39 @@ class TcpLookupHandlerTest {
     }
 
     @Test
-    fun systemTest() = systemTest(TcpLookupHandler.MODE_NAME) { write, readChannel, requests ->
+    fun simpleQuery() = systemTest(TcpLookupHandler.MODE_NAME) {
         val key = "k"
         val response1 = "r1"
         val response2 = "r2"
-        write("get $key")
+        writeln("get $key")
 
-        val (call, _, response) = requests.receive()
+        val (call, _, response) = receiveReq()
         assertEquals(key, call.parameters["key"])
 
         response.complete(OK with listOf(response1, response2))
 
-        assertEquals("200 $response1,$response2", readChannel.readUTF8Line())
+        assertEquals("200 $response1,$response2", readln())
+    }
+
+    @Test
+    fun simpleQueryWithPartialWrites() = systemTest(TcpLookupHandler.MODE_NAME) {
+        val key = "k"
+        val response1 = "r1"
+        val response2 = "r2"
+        write("g")
+        delay(100)
+        write("e")
+        delay(100)
+        write("t ")
+        delay(100)
+        writeln(key)
+
+        val (call, _, response) = receiveReq()
+        assertEquals(key, call.parameters["key"])
+
+        response.complete(OK with listOf(response1, response2))
+
+        assertEquals("200 $response1,$response2", readln())
     }
 
 }
