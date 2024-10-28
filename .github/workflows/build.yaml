@@ -48,3 +48,7 @@ jobs:
           
           docker manifest create "$image_name" "$image_amd64" "$image_arm64"
           docker manifest push "$image_name"
+          
+          image_latest="${repo}:latest"
+          docker manifest create "$image_latest" "$image_amd64" "$image_arm64"
+          docker manifest push "$image_latest"
