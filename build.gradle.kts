@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
@@ -11,6 +11,7 @@ plugins {
     kotlin("plugin.serialization")
     id("com.google.cloud.tools.jib")
     id("io.gitlab.arturbosch.detekt")
+    id("com.gradleup.shadow")
 }
 
 group = "tel.schich"
@@ -119,8 +120,12 @@ kotlin {
 
 tasks.withType<KotlinCompile> {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_21
+        jvmTarget = JVM_11
     }
+}
+
+tasks.withType<JavaCompile> {
+    targetCompatibility = JVM_11.target
 }
 
 jib {
@@ -138,4 +143,15 @@ jib {
 detekt {
     parallel = true
     config.setFrom(files(project.rootDir.resolve("detekt.yml")))
+}
+
+val shadowJar by tasks.registering(ShadowJar::class) {
+    group = "shadow"
+
+    val mainCompilation = kotlin.jvm().compilations.getByName("main")
+    from(mainCompilation.output)
+    configurations.add(mainCompilation.compileDependencyFiles)
+    manifest {
+        attributes["Main-Class"] = "tel.schich.postfixrestconnector.MainKt"
+    }
 }
