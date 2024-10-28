@@ -2,6 +2,13 @@
 
 A simple TCP server that can be used as remote lookup for the Postfix mail server.
 
+## Running
+
+Either install one of the available binaries onto you system or run the container image `ghcr.io/pschichtel/postfix-rest-connector`.
+
+The program accepts exactly one commandline argument: The path, relative or absolute, to a configuration file
+as described by the following section. The container images don't contain such configuration, but the file `sample.json`
+provides a somewhat complete example to craft one.
 
 ## Configuration
 

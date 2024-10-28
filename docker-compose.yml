@@ -1,0 +1,13 @@
+# This deployment is an example
+services:
+  postfix-rest-connector:
+    image: ${POSTFIX_REST_CONNECTOR_IMAGE:-ghcr.io/pschichtel/postfix-rest-connector:latest}
+    command: ['/config.json']
+    ports:
+      - '9001:9001'
+      - '9002:9002'
+      - '9003:9003'
+      - '9004:9004'
+      - '9005:9005'
+    volumes:
+      - './sample.json:/config.json'
