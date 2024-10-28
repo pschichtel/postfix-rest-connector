@@ -27,7 +27,7 @@ import kotlinx.io.readString
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-private val logger = KotlinLogging.logger {  }
+private val logger = KotlinLogging.logger("PolicyRequestHandler")
 
 @OptIn(ExperimentalUuidApi::class)
 open class PolicyRequestHandler(

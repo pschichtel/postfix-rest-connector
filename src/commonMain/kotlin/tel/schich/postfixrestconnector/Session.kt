@@ -23,14 +23,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.io.Buffer
-import kotlinx.io.InternalIoApi
-import kotlinx.io.RawSink
-import kotlinx.io.RawSource
-import kotlinx.io.Source
-import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.unsafe.UnsafeByteStringOperations
 
-private val logger = KotlinLogging.logger {  }
+private val logger = KotlinLogging.logger("Session")
 
 private const val READ_BUFFER_SIZE = 2048
 

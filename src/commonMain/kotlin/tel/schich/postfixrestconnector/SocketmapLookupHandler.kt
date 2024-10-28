@@ -24,7 +24,7 @@ import tel.schich.postfixrestconnector.Netstring.compileOne
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-private val logger = KotlinLogging.logger {  }
+private val logger = KotlinLogging.logger("SocketmapLookupHandler")
 
 @OptIn(ExperimentalUuidApi::class)
 open class SocketmapLookupHandler(
