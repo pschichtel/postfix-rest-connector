@@ -68,7 +68,7 @@ Endpoint example:
 [Postfix](http://www.postfix.org/tcp_table.5.html) example:
 
 ```
-virtual_mailbox_domains = tcp:localhost:9001
+virtual_mailbox_domains = tcp:127.0.0.1:9001
 ```
 
 ##### Minimal Request
@@ -115,7 +115,7 @@ Endpoint example:
 [Postfix](http://www.postfix.org/socketmap_table.5.html) example:
 
 ```
-virtual_mailbox_domains = socketmap:inet:localhost:9002:domain
+virtual_mailbox_domains = socketmap:inet:127.0.0.1:9002:domain
 ```
 
 ##### Minimal Request
@@ -164,7 +164,7 @@ Endpoint example:
 ```
 smtpd_relay_restrictions =
     permit_mynetworks
-    check_policy_service inet:localhost:9003
+    check_policy_service inet:127.0.0.1:9003
     reject
 ```
 
