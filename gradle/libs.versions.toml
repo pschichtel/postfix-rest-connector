@@ -1,0 +1,38 @@
+[versions]
+kotlin = "2.0.21"
+jib = "3.4.4"
+detekt = "1.23.7"
+shadow = "8.3.3"
+ktor = "3.0.1"
+kotlinxSerializationBom = "1.7.3"
+kotlinxCoroutines = "1.9.0"
+kotlinxIoCore = "0.5.4"
+kotlinLogging = "7.0.0"
+logbackClassic = "1.5.12"
+
+[libraries]
+ktorBom = { module = "io.ktor:ktor-bom", version.ref = "ktor" }
+kotlinxSerializationBom = { module = "org.jetbrains.kotlinx:kotlinx-serialization-bom", version.ref = "kotlinxSerializationBom" }
+kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-bom", version.ref = "kotlinxCoroutines" }
+ktorClientCore = { module = "io.ktor:ktor-client-core" }
+ktorClientJava = { module = "io.ktor:ktor-client-java" }
+ktorClientCio = { module = "io.ktor:ktor-client-cio" }
+ktorClientMock = { module = "io.ktor:ktor-client-mock" }
+ktorClientContentNegotiation = { module = "io.ktor:ktor-client-content-negotiation" }
+ktorServerCore = { module = "io.ktor:ktor-server-core" }
+ktorServerCio = { module = "io.ktor:ktor-server-cio" }
+ktorServerContentNegotiation = { module = "io.ktor:ktor-server-content-negotiation" }
+ktorNetwork = { module = "io.ktor:ktor-network" }
+ktorSerializationKotlinxJson = { module = "io.ktor:ktor-serialization-kotlinx-json" }
+kotlinxCoroutinesCore = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core" }
+kotlinxSerializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json" }
+kotlinxIoCore = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIoCore" }
+kotlinLogging = { module = "io.github.oshai:kotlin-logging", version.ref = "kotlinLogging" }
+logbackClassic = { module = "ch.qos.logback:logback-classic", version.ref = "logbackClassic" }
+
+[plugins]
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+jib = { id = "com.google.cloud.tools.jib", version.ref = "jib" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

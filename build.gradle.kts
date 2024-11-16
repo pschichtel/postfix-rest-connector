@@ -7,11 +7,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     signing
     `maven-publish`
-    kotlin("multiplatform")
-    kotlin("plugin.serialization")
-    id("com.google.cloud.tools.jib")
-    id("io.gitlab.arturbosch.detekt")
-    id("com.gradleup.shadow")
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.jib)
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.shadow)
 }
 
 group = "tel.schich"
@@ -72,29 +72,29 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(project.dependencies.platform("io.ktor:ktor-bom:$ktorVersion"))
-                api(project.dependencies.platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:$serializationVersion"))
-                api(project.dependencies.platform("org.jetbrains.kotlinx:kotlinx-coroutines-bom:$coroutinesVersion"))
-                api("io.ktor:ktor-client-core")
-                api("io.ktor:ktor-client-content-negotiation")
-                api("io.ktor:ktor-network")
-                api("io.ktor:ktor-serialization-kotlinx-json")
-                api("org.jetbrains.kotlinx:kotlinx-coroutines-core")
-                api("org.jetbrains.kotlinx:kotlinx-serialization-json")
-                api("org.jetbrains.kotlinx:kotlinx-io-core:0.5.4")
-                api("io.github.oshai:kotlin-logging:7.0.0")
+                api(project.dependencies.platform(libs.ktorBom))
+                api(project.dependencies.platform(libs.kotlinxSerializationBom))
+                api(project.dependencies.platform(libs.kotlinxCoroutines))
+                api(libs.ktorClientCore)
+                api(libs.ktorClientContentNegotiation)
+                api(libs.ktorNetwork)
+                api(libs.ktorSerializationKotlinxJson)
+                api(libs.kotlinxCoroutinesCore)
+                api(libs.kotlinxSerializationJson)
+                api(libs.kotlinxIoCore)
+                api(libs.kotlinLogging)
             }
         }
 
         val jvmMain by getting {
             dependencies {
-                api("io.ktor:ktor-client-java")
+                api(libs.ktorClientJava)
             }
         }
 
         val nativeMain by creating {
             dependencies {
-                api("io.ktor:ktor-client-cio")
+                api(libs.ktorClientCio)
             }
         }
 
@@ -103,16 +103,16 @@ kotlin {
                 implementation(kotlin("test"))
                 implementation(kotlin("test-common"))
                 implementation(kotlin("test-annotations-common"))
-                implementation("io.ktor:ktor-client-mock")
-                implementation("io.ktor:ktor-server-core")
-                implementation("io.ktor:ktor-server-cio")
-                implementation("io.ktor:ktor-server-content-negotiation")
+                implementation(libs.ktorClientMock)
+                implementation(libs.ktorServerCore)
+                implementation(libs.ktorServerCio)
+                implementation(libs.ktorServerContentNegotiation)
             }
         }
 
         val jvmTest by getting {
             dependencies {
-                implementation("ch.qos.logback:logback-classic:1.5.12")
+                implementation(libs.logbackClassic)
             }
         }
     }
