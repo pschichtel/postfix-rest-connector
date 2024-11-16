@@ -17,10 +17,6 @@ plugins {
 group = "tel.schich"
 version = "3.0.0"
 
-val ktorVersion = "3.0.0"
-val coroutinesVersion = "1.9.0"
-val serializationVersion = "1.7.3"
-
 repositories {
     mavenCentral()
 }
