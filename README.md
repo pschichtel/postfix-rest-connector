@@ -10,6 +10,14 @@ The program accepts exactly one commandline argument: The path, relative or abso
 as described by the following section. The container images don't contain such configuration, but the file `sample.json`
 provides a somewhat complete example to craft one.
 
+### Native Binaries
+
+The native binaries use different ktor client engines depending on the target platform:
+
+* Linux X86_64 uses the curl engine and as such the binary dynamically links libcurl.
+* Linux Arm 64 uses the CIO engine, no further dependencies. **Note**: This binary does **not** support TLS connections.
+* Windows uses the WinHttp engine
+
 ## Configuration
 
 ```json
