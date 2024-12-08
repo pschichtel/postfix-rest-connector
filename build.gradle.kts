@@ -68,9 +68,6 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(project.dependencies.platform(libs.ktorBom))
-                api(project.dependencies.platform(libs.kotlinxSerializationBom))
-                api(project.dependencies.platform(libs.kotlinxCoroutines))
                 api(libs.ktorClientCore)
                 api(libs.ktorClientContentNegotiation)
                 api(libs.ktorNetwork)

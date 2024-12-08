@@ -11,21 +11,18 @@ kotlinLogging = "7.0.3"
 logbackClassic = "1.5.12"
 
 [libraries]
-ktorBom = { module = "io.ktor:ktor-bom", version.ref = "ktor" }
-kotlinxSerializationBom = { module = "org.jetbrains.kotlinx:kotlinx-serialization-bom", version.ref = "kotlinxSerializationBom" }
-kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-bom", version.ref = "kotlinxCoroutines" }
-ktorClientCore = { module = "io.ktor:ktor-client-core" }
-ktorClientJava = { module = "io.ktor:ktor-client-java" }
-ktorClientCio = { module = "io.ktor:ktor-client-cio" }
-ktorClientMock = { module = "io.ktor:ktor-client-mock" }
-ktorClientContentNegotiation = { module = "io.ktor:ktor-client-content-negotiation" }
-ktorServerCore = { module = "io.ktor:ktor-server-core" }
-ktorServerCio = { module = "io.ktor:ktor-server-cio" }
-ktorServerContentNegotiation = { module = "io.ktor:ktor-server-content-negotiation" }
-ktorNetwork = { module = "io.ktor:ktor-network" }
-ktorSerializationKotlinxJson = { module = "io.ktor:ktor-serialization-kotlinx-json" }
-kotlinxCoroutinesCore = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core" }
-kotlinxSerializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json" }
+ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktorClientJava = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
+ktorClientCio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktorClientMock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+ktorClientContentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktorServerCore = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktorServerCio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+ktorServerContentNegotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktorNetwork = { module = "io.ktor:ktor-network", version.ref = "ktor" }
+ktorSerializationKotlinxJson = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+kotlinxCoroutinesCore = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinxSerializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationBom" }
 kotlinxIoCore = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIoCore" }
 kotlinLogging = { module = "io.github.oshai:kotlin-logging", version.ref = "kotlinLogging" }
 logbackClassic = { module = "ch.qos.logback:logback-classic", version.ref = "logbackClassic" }
