@@ -2,6 +2,11 @@ package tel.schich.postfixrestconnector
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngineConfig
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.UserAgent
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.ServerSocket
@@ -9,8 +14,7 @@ import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
-import io.ktor.utils.io.core.writeText
-import io.ktor.utils.io.read
+import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -28,7 +32,7 @@ private val logger = KotlinLogging.logger("Session")
 
 private const val READ_BUFFER_SIZE = 2048
 
-expect fun setupHttpClient(config: Configuration): HttpClient
+expect fun setupHttpClient(customizer: HttpClientConfig<out HttpClientEngineConfig>.() -> Unit): HttpClient
 
 class Session(
     private val job: Job,
@@ -51,7 +55,15 @@ class Session(
 }
 suspend fun startSession(config: Configuration, dispatcher: CoroutineDispatcher = Dispatchers.IO): Session {
     val selector = SelectorManager(dispatcher)
-    val restClient = setupHttpClient(config)
+    val restClient = setupHttpClient {
+        install(HttpTimeout)
+        install(ContentNegotiation) {
+            json()
+        }
+        install(UserAgent) {
+            agent = config.userAgent
+        }
+    }
 
     val job = SupervisorJob()
     val scope = CoroutineScope(job + dispatcher)

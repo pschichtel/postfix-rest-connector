@@ -49,6 +49,7 @@ kotlin {
         binaries {
             executable(listOf(NativeBuildType.RELEASE, NativeBuildType.DEBUG)) {
                 entryPoint = "tel.schich.postfixrestconnector.main"
+                // linkerOpts("-lnghttp2", "-lzstd")
             }
         }
     }
@@ -86,6 +87,23 @@ kotlin {
         }
 
         val nativeMain by creating {
+            dependencies {
+            }
+        }
+
+        val linuxX64Main by getting {
+            dependencies {
+                api(libs.ktorClientCurl)
+            }
+        }
+
+        val mingwX64Main by getting {
+            dependencies {
+                api(libs.ktorClientWinHttp)
+            }
+        }
+
+        val linuxArm64Main by getting {
             dependencies {
                 api(libs.ktorClientCio)
             }

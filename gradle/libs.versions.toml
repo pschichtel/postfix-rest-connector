@@ -13,6 +13,8 @@ logbackClassic = "1.5.12"
 [libraries]
 ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktorClientJava = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
+ktorClientCurl = { module = "io.ktor:ktor-client-curl", version.ref = "ktor" }
+ktorClientWinHttp = { module = "io.ktor:ktor-client-winhttp", version.ref = "ktor" }
 ktorClientCio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktorClientMock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 ktorClientContentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
