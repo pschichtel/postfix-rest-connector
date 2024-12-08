@@ -40,12 +40,12 @@ jobs:
           
           ./gradlew linuxX64MainBinaries --console=plain
           image_amd64="${repo}-amd64:${tag}"
-          docker build --platform linux/amd64 --build-arg FILE_PATH=./build/bin/linuxX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_amd64" .
+          docker build --platform linux/amd64 --build-arg FILE_PATH=./build/bin/linuxX64/releaseExecutable/postfix-rest-connector.kexe -t "$image_amd64" -f Dockerfile .
           docker push "$image_amd64"
           
           ./gradlew linuxArm64MainBinaries --console=plain
           image_arm64="${repo}-arm64:${tag}"
-          docker build --platform linux/arm64 --build-arg FILE_PATH=./build/bin/linuxArm64/releaseExecutable/postfix-rest-connector.kexe -t "$image_arm64" .
+          docker build --platform linux/arm64 --build-arg FILE_PATH=./build/bin/linuxArm64/releaseExecutable/postfix-rest-connector.kexe -t "$image_arm64" -f Dockerfile.arm64 .
           docker push "$image_arm64"
           
           docker manifest create "$image_name" "$image_amd64" "$image_arm64"
