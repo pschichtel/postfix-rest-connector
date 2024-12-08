@@ -30,7 +30,7 @@ jobs:
           ./gradlew jib --console=plain
       - name: Build Linux Binary Containers
         run: |
-          apt install -y curl
+          apt install -y libcurl4-openssl-dev
           
           name="$(grep "rootProject.name = " settings.gradle.kts | cut -d'"' -f2)"
           version="$(grep 'version =' build.gradle.kts | cut -d'"' -f2)"
