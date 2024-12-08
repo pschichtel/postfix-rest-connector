@@ -1,7 +1,7 @@
 FROM debian:bookworm-slim
 
 RUN apt update && apt full-upgrade -y
-RUN apt install curl -y
+RUN apt install libcurl4 -y
 
 ARG FILE_PATH
 
