@@ -15,7 +15,7 @@ plugins {
 }
 
 group = "tel.schich"
-version = "3.1.0"
+version = "3.1.1-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -83,6 +83,7 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 api(libs.ktorClientJava)
+                runtimeOnly(libs.logbackClassic)
             }
         }
 
@@ -118,12 +119,6 @@ kotlin {
                 implementation(libs.ktorServerCore)
                 implementation(libs.ktorServerCio)
                 implementation(libs.ktorServerContentNegotiation)
-            }
-        }
-
-        val jvmTest by getting {
-            dependencies {
-                implementation(libs.logbackClassic)
             }
         }
     }
