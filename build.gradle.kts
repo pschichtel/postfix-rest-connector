@@ -83,7 +83,7 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 api(libs.ktorClientJava)
-                runtimeOnly(libs.logbackClassic)
+                implementation(libs.logbackClassic)
             }
         }
 
@@ -160,4 +160,8 @@ val shadowJar by tasks.registering(ShadowJar::class) {
     manifest {
         attributes["Main-Class"] = "tel.schich.postfixrestconnector.MainKt"
     }
+}
+
+tasks.assemble {
+    dependsOn(shadowJar)
 }
