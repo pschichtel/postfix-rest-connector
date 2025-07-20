@@ -1,14 +1,14 @@
 [versions]
-kotlin = "2.1.0"
-jib = "3.4.4"
-detekt = "1.23.7"
-shadow = "8.3.5"
-ktor = "3.0.2"
-kotlinxSerializationBom = "1.7.3"
-kotlinxCoroutines = "1.9.0"
-kotlinxIoCore = "0.6.0"
-kotlinLogging = "7.0.3"
-logbackClassic = "1.5.12"
+kotlin = "2.2.0"
+jib = "3.4.5"
+detekt = "1.23.8"
+shadow = "8.3.8"
+ktor = "3.2.2"
+kotlinxSerializationBom = "1.9.0"
+kotlinxCoroutines = "1.10.2"
+kotlinxIoCore = "0.8.0"
+kotlinLogging = "7.0.7"
+logbackClassic = "1.5.18"
 
 [libraries]
 ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
