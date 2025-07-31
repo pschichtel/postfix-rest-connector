@@ -7,7 +7,7 @@ ktor = "3.2.3"
 kotlinxSerializationBom = "1.9.0"
 kotlinxCoroutines = "1.10.2"
 kotlinxIoCore = "0.8.0"
-kotlinLogging = "7.0.7"
+kotlinLogging = "7.0.10"
 logbackClassic = "1.5.18"
 
 [libraries]
