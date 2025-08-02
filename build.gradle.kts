@@ -34,7 +34,6 @@ java {
 
 kotlin {
     jvm {
-        withJava()
         compilations.all {
             compileTaskProvider.configure {
                 compilerOptions {
