@@ -2,7 +2,7 @@
 kotlin = "2.2.0"
 jib = "3.4.5"
 detekt = "1.23.8"
-shadow = "8.3.8"
+shadow = "8.3.9"
 ktor = "3.2.3"
 kotlinxSerializationBom = "1.9.0"
 kotlinxCoroutines = "1.10.2"
