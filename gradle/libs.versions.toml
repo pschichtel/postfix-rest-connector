@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.2.21"
+kotlin = "2.3.0"
 jib = "3.5.2"
 detekt = "1.23.8"
 shadow = "9.3.0"
