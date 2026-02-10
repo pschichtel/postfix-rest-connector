@@ -20,11 +20,10 @@ import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.readAvailable
-import io.ktor.utils.io.readUTF8Line
+import io.ktor.utils.io.readLine
 import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import kotlin.test.assertEquals
@@ -62,7 +61,7 @@ class TestContext(
     }
 
     suspend fun readln(): String? {
-        return readChannel.readUTF8Line()
+        return readChannel.readLine()
     }
 
     suspend fun readAvailable(): String? {
