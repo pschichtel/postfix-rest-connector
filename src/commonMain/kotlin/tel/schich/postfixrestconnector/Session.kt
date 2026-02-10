@@ -81,7 +81,7 @@ suspend fun startSession(config: Configuration, dispatcher: CoroutineDispatcher 
             else -> error("Unknown mode ${endpoint.mode}!")
         }
 
-        val accepter = scope.launch(SupervisorJob()) {
+        val accepter = scope.launch {
             while (isActive) {
                 val socket = listenSocket.accept()
                 val actor = processConnection(endpoint, socket, handler)

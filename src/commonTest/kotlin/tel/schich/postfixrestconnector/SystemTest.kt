@@ -24,6 +24,7 @@ import io.ktor.utils.io.readLine
 import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import kotlin.test.assertEquals
@@ -85,11 +86,10 @@ class TestContext(
 fun systemTest(mode: String, block: suspend TestContext.() -> Unit) {
     val name = randomString()
     val targetPath = "/$name"
-    val authToken = name
     val calls = Channel<Req>()
 
     fun RoutingContext.assertHeaders() {
-        assertEquals(authToken, call.request.headers["x-auth-token"])
+        assertEquals(name, call.request.headers["x-auth-token"])
         assertNotNull(call.request.headers["x-request-id"])
     }
 
@@ -104,7 +104,7 @@ fun systemTest(mode: String, block: suspend TestContext.() -> Unit) {
         }
     }
 
-    val server = embeddedServer(CIO, host = "0.0.0.0", port = 0) {
+    val server = embeddedServer(CIO, host = "127.0.0.1", port = 0) {
         install(ContentNegotiation) {
             json()
         }
@@ -137,10 +137,10 @@ fun systemTest(mode: String, block: suspend TestContext.() -> Unit) {
         val serverBindPort = server.engine.resolvedConnectors().first().port
         val endpoint = Endpoint(
             name = name,
-            target = Url("http://localhost:$serverBindPort$targetPath"),
+            target = Url("http://127.0.0.1:$serverBindPort$targetPath"),
             bindAddress = "127.0.0.1",
             bindPort = 0,
-            authToken = authToken,
+            authToken = name,
             mode = mode,
         )
 
