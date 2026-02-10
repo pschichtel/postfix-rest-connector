@@ -9,7 +9,7 @@ plugins {
     `maven-publish`
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.jib)
+    alias(libs.plugins.tinyJib)
     alias(libs.plugins.detekt)
     alias(libs.plugins.shadow)
 }
@@ -133,16 +133,19 @@ tasks.withType<JavaCompile> {
     targetCompatibility = JVM_11.target
 }
 
-jib {
+tinyJib {
     from {
         image = "docker.io/library/eclipse-temurin:21-jre-alpine@sha256:98963ed09c4fd82e128c6cc9e64d71798239b824164276626d79b8f9e666ac0e"
     }
     container {
+        mainClass = "tel.schich.postfixrestconnector.MainKt"
         ports = listOf("8080")
     }
     to {
         image = "ghcr.io/pschichtel/$name:$version"
     }
+
+    sourceSetName = "jvmMain"
 }
 
 detekt {

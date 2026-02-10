@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.3.0"
-jib = "3.5.2"
+tinyJib = "0.1.1"
 detekt = "1.23.8"
 shadow = "9.3.1"
 ktor = "3.4.0"
@@ -32,6 +32,6 @@ logbackClassic = { module = "ch.qos.logback:logback-classic", version.ref = "log
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-jib = { id = "com.google.cloud.tools.jib", version.ref = "jib" }
+tinyJib = { id = "tel.schich.tinyjib", version.ref = "tinyJib" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

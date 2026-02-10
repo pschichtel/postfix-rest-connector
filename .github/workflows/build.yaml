@@ -29,7 +29,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Java Container
         run: |
-          ./gradlew jib --console=plain
+          ./gradlew tinyJibPublish --console=plain
       - name: Build Linux Binary Containers
         run: |
           name="$(grep "rootProject.name = " settings.gradle.kts | cut -d'"' -f2)"
