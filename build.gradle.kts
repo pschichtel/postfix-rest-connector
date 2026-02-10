@@ -1,4 +1,3 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
@@ -151,19 +150,4 @@ tinyJib {
 detekt {
     parallel = true
     config.setFrom(files(project.rootDir.resolve("detekt.yml")))
-}
-
-val shadowJar by tasks.registering(ShadowJar::class) {
-    group = "shadow"
-
-    val mainCompilation = kotlin.jvm().compilations.getByName("main")
-    from(mainCompilation.output)
-    configurations.add(mainCompilation.compileDependencyFiles)
-    manifest {
-        attributes["Main-Class"] = "tel.schich.postfixrestconnector.MainKt"
-    }
-}
-
-tasks.assemble {
-    dependsOn(shadowJar)
 }
