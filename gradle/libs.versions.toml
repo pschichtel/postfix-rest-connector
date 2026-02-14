@@ -8,7 +8,7 @@ kotlinxSerializationBom = "1.10.0"
 kotlinxCoroutines = "1.10.2"
 kotlinxIoCore = "0.8.2"
 kotlinLogging = "7.0.14"
-logbackClassic = "1.5.29"
+logbackClassic = "1.5.30"
 
 [libraries]
 ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
