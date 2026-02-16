@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import pl.allegro.tech.build.axion.release.domain.PredefinedVersionCreator
 
 plugins {
     signing
@@ -11,10 +12,22 @@ plugins {
     alias(libs.plugins.tinyJib)
     alias(libs.plugins.detekt)
     alias(libs.plugins.shadow)
+    alias(libs.plugins.axionRelease)
+}
+
+scmVersion {
+    tag {
+        prefix = "postfix-rest-connector-"
+    }
+    nextVersion {
+        suffix = "SNAPSHOT"
+        separator = "-"
+    }
+    versionCreator = PredefinedVersionCreator.SIMPLE.versionCreator
 }
 
 group = "tel.schich"
-version = "3.1.1"
+version = scmVersion.version
 
 repositories {
     mavenCentral()

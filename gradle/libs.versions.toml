@@ -9,6 +9,7 @@ kotlinxCoroutines = "1.10.2"
 kotlinxIoCore = "0.8.2"
 kotlinLogging = "8.0.01"
 logbackClassic = "1.5.32"
+axionRelease = "1.21.1"
 
 [libraries]
 ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
@@ -35,3 +36,4 @@ kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", versio
 tinyJib = { id = "tel.schich.tinyjib", version.ref = "tinyJib" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+axionRelease = { id = "pl.allegro.tech.build.axion-release", version.ref = "axionRelease" }
