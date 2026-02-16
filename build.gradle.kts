@@ -1,6 +1,4 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import pl.allegro.tech.build.axion.release.domain.PredefinedVersionCreator
 
@@ -56,27 +54,6 @@ kotlin {
         }
     }
 
-    fun KotlinNativeTarget.configureNativeTarget() {
-        binaries {
-            executable(listOf(NativeBuildType.RELEASE, NativeBuildType.DEBUG)) {
-                entryPoint = "tel.schich.postfixrestconnector.main"
-                // linkerOpts("-lnghttp2", "-lzstd")
-            }
-        }
-    }
-
-    linuxX64 {
-        configureNativeTarget()
-    }
-
-    linuxArm64 {
-        configureNativeTarget()
-    }
-
-    mingwX64 {
-        configureNativeTarget()
-    }
-
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -95,29 +72,6 @@ kotlin {
             dependencies {
                 api(libs.ktorClientJava)
                 implementation(libs.logbackClassic)
-            }
-        }
-
-        val nativeMain by creating {
-            dependencies {
-            }
-        }
-
-        val linuxX64Main by getting {
-            dependencies {
-                api(libs.ktorClientCurl)
-            }
-        }
-
-        val mingwX64Main by getting {
-            dependencies {
-                api(libs.ktorClientWinHttp)
-            }
-        }
-
-        val linuxArm64Main by getting {
-            dependencies {
-                api(libs.ktorClientCio)
             }
         }
 
