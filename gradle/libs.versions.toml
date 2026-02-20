@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.3.10"
-tinyJib = "0.2.5"
+tinyJib = "0.3.0"
 detekt = "1.23.8"
 shadow = "9.3.1"
 ktor = "3.4.0"
