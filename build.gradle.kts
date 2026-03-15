@@ -116,5 +116,6 @@ tinyJib {
 
 detekt {
     parallel = true
+    buildUponDefaultConfig = true
     config.setFrom(files(project.rootDir.resolve("detekt.yml")))
 }
