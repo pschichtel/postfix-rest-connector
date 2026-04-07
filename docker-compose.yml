@@ -1,7 +1,7 @@
 # This deployment is an example
 services:
   postfix-rest-connector:
-    image: ${POSTFIX_REST_CONNECTOR_IMAGE:-ghcr.io/pschichtel/postfix-rest-connector:latest}
+    image: ${POSTFIX_REST_CONNECTOR_IMAGE:-ghcr.io/pschichtel/postfix-rest-connector:latest@sha256:a751f027d2c5337101e9378405d0705f1a4d61c5cac4c530a982cde49d18c116}
     command: ['/config.json']
     ports:
       - '9001:9001'
