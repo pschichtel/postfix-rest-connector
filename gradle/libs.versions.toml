@@ -7,7 +7,7 @@ ktor = "3.5.0"
 kotlinxSerializationBom = "1.11.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxIoCore = "0.9.0"
-kotlinLogging = "8.0.02"
+kotlinLogging = "8.0.03"
 logbackClassic = "1.5.32"
 axionRelease = "1.21.1"
 
