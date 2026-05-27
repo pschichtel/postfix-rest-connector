@@ -8,7 +8,7 @@ kotlinxSerializationBom = "1.11.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxIoCore = "0.9.0"
 kotlinLogging = "8.0.4"
-logbackClassic = "1.5.32"
+logbackClassic = "1.5.33"
 axionRelease = "1.21.1"
 
 [libraries]
