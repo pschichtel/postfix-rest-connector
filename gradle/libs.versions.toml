@@ -9,7 +9,7 @@ kotlinxCoroutines = "1.11.0"
 kotlinxIoCore = "0.9.1"
 kotlinLogging = "8.0.4"
 logbackClassic = "1.6.1"
-axionRelease = "1.21.2"
+axionRelease = "1.21.3"
 
 [libraries]
 ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
