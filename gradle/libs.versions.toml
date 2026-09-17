@@ -3,13 +3,13 @@ kotlin = "2.4.20"
 tinyJib = "0.4.0"
 detekt = "1.23.8"
 shadow = "9.6.1"
-ktor = "3.5.2"
+ktor = "3.6.0"
 kotlinxSerializationBom = "1.11.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxIoCore = "0.9.1"
 kotlinLogging = "8.0.4"
 logbackClassic = "1.6.3"
-axionRelease = "1.21.3"
+axionRelease = "1.21.4"
 
 [libraries]
 ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
